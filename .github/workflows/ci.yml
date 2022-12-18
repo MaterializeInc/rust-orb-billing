@@ -1,0 +1,55 @@
+name: ci
+on: [push, pull_request]
+
+jobs:
+  test:
+    name: test
+    runs-on: ${{ matrix.os }}
+    # We only have one test Orb workspace to use for all CI jobs.
+    concurrency: ci
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - build: macos
+            os: macos-latest
+            rust: 1.65.0
+          - build: ubuntu
+            os: ubuntu-latest
+            rust: 1.65.0
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        default: true
+    - run: cargo test -- --test-threads=1
+      env:
+        ORB_API_KEY: ${{ secrets.ORB_SECRET_KEY }}
+
+  fmt:
+    name: fmt
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.65.0
+        default: true
+        components: rustfmt
+    - run: cargo fmt -- --check
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - uses: actions-rs/toolchain@v1
+      with:
+        toolchain: 1.65.0
+        default: true
+        components: clippy
+    - uses: actions-rs/clippy-check@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        args: --all-features
