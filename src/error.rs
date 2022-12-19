@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::fmt;
+
 use reqwest::StatusCode;
 
 /// An error returned by a [`Client`].
@@ -25,6 +27,17 @@ pub enum Error {
     /// An error returned by the API.
     Api(ApiError),
 }
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Error::Transport(e) => write!(f, "orb error: transport: {e}"),
+            Error::Api(e) => write!(f, "orb error: api: {e}"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
 
 /// An error returned by the Orb API.
 ///
@@ -40,6 +53,19 @@ pub struct ApiError {
     /// Errors that occurred while validating the request.
     pub validation_errors: Vec<String>,
 }
+
+impl fmt::Display for ApiError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.title)?;
+        if let Some(detail) = &self.detail {
+            write!(f, ": {detail}")?;
+        }
+        write!(f, " (status {})", self.status_code)?;
+        write!(f, "; validation errors: {}", self.validation_errors.join(","))
+    }
+}
+
+impl std::error::Error for ApiError {}
 
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Error {
