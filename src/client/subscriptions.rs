@@ -16,12 +16,12 @@
 use futures_core::Stream;
 use reqwest::Method;
 use serde::Deserialize;
-use serde_enum_str::{Serialize_enum_str, Deserialize_enum_str};
+use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
 use time::OffsetDateTime;
 
-use crate::client::Client;
 use crate::client::customers::{Customer, CustomerIdFilter};
 use crate::client::plans::Plan;
+use crate::client::Client;
 use crate::config::ListParams;
 use crate::error::Error;
 use crate::util::StrIteratorExt;
@@ -89,7 +89,6 @@ impl<'a> Default for SubscriptionListParams<'a> {
     }
 }
 
-
 impl<'a> SubscriptionListParams<'a> {
     /// The default subscription list parameters.
     ///
@@ -114,13 +113,15 @@ impl<'a> SubscriptionListParams<'a> {
     }
 }
 
-
 impl Client {
     /// Lists subscriptions as configured by `params`.
     ///
     /// The underlying API call is paginated. The returned stream will fetch
     /// additional pages as it is consumed.
-    pub fn list_subscriptions(&self, params: &SubscriptionListParams) -> impl Stream<Item = Result<Subscription, Error>> + '_ {
+    pub fn list_subscriptions(
+        &self,
+        params: &SubscriptionListParams,
+    ) -> impl Stream<Item = Result<Subscription, Error>> + '_ {
         let req = self.build_request(Method::GET, SUBSCRIPTIONS);
         let req = match params.filter {
             None => req,

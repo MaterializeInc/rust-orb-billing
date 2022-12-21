@@ -25,7 +25,7 @@ jobs:
         default: true
     - run: cargo test -- --test-threads=1
       env:
-        ORB_API_KEY: ${{ secrets.ORB_SECRET_KEY }}
+        ORB_API_KEY: ${{ secrets.ORB_API_KEY }}
 
   fmt:
     name: fmt

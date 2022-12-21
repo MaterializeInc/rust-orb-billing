@@ -18,8 +18,8 @@ use reqwest::Method;
 use serde::Deserialize;
 use time::OffsetDateTime;
 
+use crate::client::customers::CustomerIdFilter;
 use crate::client::Client;
-use crate::client::customers::{CustomerIdFilter};
 use crate::config::ListParams;
 use crate::error::Error;
 use crate::util::StrIteratorExt;
@@ -110,13 +110,15 @@ impl<'a> InvoiceListParams<'a> {
     }
 }
 
-
 impl Client {
     /// Lists invoices as configured by `params`.
     ///
     /// The underlying API call is paginated. The returned stream will fetch
     /// additional pages as it is consumed.
-    pub fn list_invoices(&self, params: &InvoiceListParams) -> impl Stream<Item = Result<Invoice, Error>> + '_ {
+    pub fn list_invoices(
+        &self,
+        params: &InvoiceListParams,
+    ) -> impl Stream<Item = Result<Invoice, Error>> + '_ {
         let req = self.build_request(Method::GET, INVOICES);
         let req = match params.customer_filter {
             None => req,

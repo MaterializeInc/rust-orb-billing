@@ -61,7 +61,11 @@ impl fmt::Display for ApiError {
             write!(f, ": {detail}")?;
         }
         write!(f, " (status {})", self.status_code)?;
-        write!(f, "; validation errors: {}", self.validation_errors.join(","))
+        write!(
+            f,
+            "; validation errors: {}",
+            self.validation_errors.join(",")
+        )
     }
 }
 

@@ -38,8 +38,8 @@ use test_log::test;
 use tracing::info;
 
 use orb_billing::{
-    Address, AddressRequest, Client, ClientConfig, CreateCustomerRequest, Error, ListParams, TaxId,
-    TaxIdRequest, UpdateCustomerRequest, SubscriptionListParams, InvoiceListParams,
+    Address, AddressRequest, Client, ClientConfig, CreateCustomerRequest, Error, InvoiceListParams,
+    ListParams, SubscriptionListParams, TaxId, TaxIdRequest, UpdateCustomerRequest,
 };
 
 /// The API key to authenticate with.
@@ -238,7 +238,11 @@ async fn test_customers() {
 async fn test_plans() {
     let client = new_client();
 
-    let plans: Vec<_> = client.list_plans(&MAX_PAGE_LIST_PARAMS).try_collect().await.unwrap();
+    let plans: Vec<_> = client
+        .list_plans(&MAX_PAGE_LIST_PARAMS)
+        .try_collect()
+        .await
+        .unwrap();
     println!("plans = {:#?}", plans);
 
     // TODO: validate list results.
@@ -251,7 +255,11 @@ async fn test_plans() {
 async fn test_subscriptions() {
     let client = new_client();
 
-    let subscriptions: Vec<_> = client.list_subscriptions(&SubscriptionListParams::default()).try_collect().await.unwrap();
+    let subscriptions: Vec<_> = client
+        .list_subscriptions(&SubscriptionListParams::default())
+        .try_collect()
+        .await
+        .unwrap();
     println!("subscriptions = {:#?}", subscriptions);
 
     // TODO: validate list results.
@@ -262,13 +270,16 @@ async fn test_subscriptions() {
 async fn test_invoices() {
     let client = new_client();
 
-    let invoices: Vec<_> = client.list_invoices(&InvoiceListParams::default()).try_collect().await.unwrap();
+    let invoices: Vec<_> = client
+        .list_invoices(&InvoiceListParams::default())
+        .try_collect()
+        .await
+        .unwrap();
     println!("invoices = {:#?}", invoices);
 
     // TODO: validate list results.
     // TODO: test get_invoice.
 }
-
 
 #[test(tokio::test)]
 async fn test_errors() {

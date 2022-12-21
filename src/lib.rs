@@ -43,8 +43,8 @@ mod serde;
 mod util;
 
 pub use client::customers::{
-    Address, AddressRequest, CreateCustomerRequest, Customer, PaymentProvider,
-    UpdateCustomerRequest, CustomerIdFilter,
+    Address, AddressRequest, CreateCustomerRequest, Customer, CustomerIdFilter, PaymentProvider,
+    UpdateCustomerRequest,
 };
 pub use client::invoices::{Invoice, InvoiceCustomer, InvoiceListParams, InvoiceSubscription};
 pub use client::subscriptions::{Subscription, SubscriptionListParams, SubscriptionStatus};
