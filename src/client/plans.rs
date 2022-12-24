@@ -26,7 +26,7 @@ use crate::util::StrIteratorExt;
 const PLANS_PATH: [&str; 1] = ["plans"];
 
 /// An Orb plan.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Plan {
     /// The Orb-assigned unique identifier for the plan.
     pub id: String,

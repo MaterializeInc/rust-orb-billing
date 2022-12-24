@@ -83,10 +83,8 @@ where
     T: fmt::Debug,
 {
     match res.unwrap_err() {
-        Error::Transport(e) => {
-            panic!("expected API error with code {status_code} but got transport error: {e}")
-        }
         Error::Api(e) => assert_eq!(e.status_code, status_code),
+        e => panic!("expected API error with code {status_code} but got: {e:?}"),
     }
 }
 
@@ -103,7 +101,7 @@ async fn test_customers() {
     let external_id = format!("{TEST_PREFIX}-{nonce}");
     let customer = client
         .create_customer(&CreateCustomerRequest {
-            name: &*name,
+            name: &name,
             email,
             external_id: Some(&*external_id),
             timezone: Some("America/New_York"),
@@ -127,7 +125,7 @@ async fn test_customers() {
 
     // Test fetching the customer by external ID.
     let customer = client
-        .get_customer_by_external_id(&*external_id)
+        .get_customer_by_external_id(&external_id)
         .await
         .unwrap();
     assert_eq!(customer.name, name);
@@ -167,7 +165,7 @@ async fn test_customers() {
     let email2 = "orb-testing+2@materialize.com";
     let customer2 = client
         .create_customer(&CreateCustomerRequest {
-            name: &*format!("{TEST_PREFIX}-{nonce}-2"),
+            name: &format!("{TEST_PREFIX}-{nonce}-2"),
             email: email2,
             shipping_address: Some(AddressRequest {
                 city: Some("New York"),

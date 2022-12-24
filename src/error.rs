@@ -26,6 +26,11 @@ pub enum Error {
     Transport(reqwest::Error),
     /// An error returned by the API.
     Api(ApiError),
+    /// The API returned an unexpected response.
+    UnexpectedResponse {
+        /// Details about the nature of the unexpected response.
+        detail: String,
+    },
 }
 
 impl fmt::Display for Error {
@@ -33,6 +38,9 @@ impl fmt::Display for Error {
         match self {
             Error::Transport(e) => write!(f, "orb error: transport: {e}"),
             Error::Api(e) => write!(f, "orb error: api: {e}"),
+            Error::UnexpectedResponse { detail } => {
+                write!(f, "orb error: unexpected response: {detail}")
+            }
         }
     }
 }

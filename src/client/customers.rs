@@ -16,6 +16,7 @@
 use codes_iso_3166::part_1::CountryCode;
 use codes_iso_4217::CurrencyCode;
 use futures_core::Stream;
+use futures_util::stream::TryStreamExt;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
@@ -40,7 +41,7 @@ pub enum CustomerIdFilter<'a> {
 }
 
 /// The subset of [`Customer`] used in create requests.
-#[derive(Debug, Default, Clone, PartialEq, Hash, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct CreateCustomerRequest<'a> {
     /// An optional user-defined ID for this customer resource, used throughout
     /// the system as an alias for this customer.
@@ -77,7 +78,7 @@ pub struct CreateCustomerRequest<'a> {
 }
 
 /// The subset of [`Customer`] used in update requests.
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct UpdateCustomerRequest<'a> {
     /// The full name of the customer.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -103,8 +104,18 @@ pub struct UpdateCustomerRequest<'a> {
     pub tax_id: Option<TaxIdRequest<'a>>,
 }
 
+// Deleted variants are immediately filtered out, so boxing the larger
+// `Normal` variant would result in an unnecessary heap allocation.
+#[allow(clippy::large_enum_variant)]
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum CustomerResponse {
+    Normal(Customer),
+    Deleted { id: String, deleted: bool },
+}
+
 /// An Orb customer.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Customer {
     /// The Orb-assigned unique identifier for the customer.
     pub id: String,
@@ -143,7 +154,7 @@ pub struct Customer {
 
 /// A payment provider.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
 pub enum PaymentProvider {
     /// Quickbooks.
     #[serde(rename = "quickbooks")]
@@ -166,7 +177,7 @@ pub enum PaymentProvider {
 }
 
 /// The subset of [`Address`] used in create and update requests.
-#[derive(Debug, Clone, Default, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct AddressRequest<'a> {
     /// The city.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -189,7 +200,7 @@ pub struct AddressRequest<'a> {
 }
 
 /// A customer's address.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Address {
     /// The city.
     pub city: Option<String>,
@@ -216,6 +227,23 @@ impl Client {
     ) -> impl Stream<Item = Result<Customer, Error>> + '_ {
         let req = self.build_request(Method::GET, CUSTOMERS_PATH);
         self.stream_paginated_request(params, req)
+            .try_filter_map(|res| async {
+                match res {
+                    CustomerResponse::Normal(c) => Ok(Some(c)),
+                    CustomerResponse::Deleted {
+                        id: _,
+                        deleted: true,
+                    } => Ok(None),
+                    CustomerResponse::Deleted { id, deleted: false } => {
+                        Err(Error::UnexpectedResponse {
+                            detail: format!(
+                                "customer {id} used deleted response shape \
+                                but deleted field was `false`"
+                            ),
+                        })
+                    }
+                }
+            })
     }
 
     /// Creates a new customer.

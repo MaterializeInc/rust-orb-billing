@@ -29,7 +29,7 @@ use crate::util::StrIteratorExt;
 const SUBSCRIPTIONS: [&str; 1] = ["subscriptions"];
 
 /// An Orb subscription.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Subscription {
     /// The Orb-assigned unique identifier for the subscription.
     pub id: String,
@@ -62,7 +62,7 @@ pub struct Subscription {
 
 /// The status of an Orb subscription.
 #[non_exhaustive]
-#[derive(Clone, Debug, PartialEq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
 #[serde(rename_all = "snake_case")]
 pub enum SubscriptionStatus {
     /// An active subscription.
