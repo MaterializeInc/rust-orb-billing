@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
 
 /// The subset of [`TaxId`] used in create and update requests.
-#[derive(Clone, Debug, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TaxIdRequest<'a> {
     /// The type of the tax ID.
     #[serde(rename = "type")]
@@ -30,7 +30,7 @@ pub struct TaxIdRequest<'a> {
 }
 
 /// Tax ID details to display on an invoice.
-#[derive(Clone, Debug, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TaxId {
     /// The type of the tax ID.
     #[serde(rename = "type")]
@@ -45,7 +45,7 @@ pub struct TaxId {
 ///
 /// See: <https://docs.withorb.com/docs/orb-docs/api-reference/schemas/customer-tax-id>
 #[non_exhaustive]
-#[derive(Clone, Debug, PartialEq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
 #[serde(rename_all = "snake_case")]
 pub enum TaxIdType {
     /// United Arab Emirates Tax Registration Number.

@@ -41,7 +41,7 @@ pub enum CustomerIdFilter<'a> {
 }
 
 /// The subset of [`Customer`] used in create requests.
-#[derive(Debug, Default, Clone, PartialEq, Hash, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct CreateCustomerRequest<'a> {
     /// An optional user-defined ID for this customer resource, used throughout
     /// the system as an alias for this customer.
@@ -78,7 +78,7 @@ pub struct CreateCustomerRequest<'a> {
 }
 
 /// The subset of [`Customer`] used in update requests.
-#[derive(Debug, Default, Clone, Serialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct UpdateCustomerRequest<'a> {
     /// The full name of the customer.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -115,7 +115,7 @@ enum CustomerResponse {
 }
 
 /// An Orb customer.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Customer {
     /// The Orb-assigned unique identifier for the customer.
     pub id: String,
@@ -154,7 +154,7 @@ pub struct Customer {
 
 /// A payment provider.
 #[non_exhaustive]
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
 pub enum PaymentProvider {
     /// Quickbooks.
     #[serde(rename = "quickbooks")]
@@ -177,7 +177,7 @@ pub enum PaymentProvider {
 }
 
 /// The subset of [`Address`] used in create and update requests.
-#[derive(Debug, Clone, Default, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct AddressRequest<'a> {
     /// The city.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -200,7 +200,7 @@ pub struct AddressRequest<'a> {
 }
 
 /// A customer's address.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Address {
     /// The city.
     pub city: Option<String>,

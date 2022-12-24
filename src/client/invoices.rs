@@ -27,7 +27,7 @@ use crate::util::StrIteratorExt;
 const INVOICES: [&str; 1] = ["invoices"];
 
 /// An Orb invoice.
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct Invoice {
     /// The Orb-assigned unique identifier for the invoice.
     pub id: String,
@@ -49,7 +49,7 @@ pub struct Invoice {
 }
 
 /// Identifies the customer associated with an [`Invoice`].
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct InvoiceCustomer {
     /// The Orb-assigned unique identifier for the customer.
     pub id: String,
@@ -59,7 +59,7 @@ pub struct InvoiceCustomer {
 }
 
 /// Identifies the subscription associated with an [`Invoice`].
-#[derive(Debug, Clone, PartialEq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
 pub struct InvoiceSubscription {
     /// The Orb-assigned unique identifier for the subscription.
     pub id: String,
