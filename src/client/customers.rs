@@ -16,6 +16,7 @@
 use codes_iso_3166::part_1::CountryCode;
 use codes_iso_4217::CurrencyCode;
 use futures_core::Stream;
+use futures_util::stream::TryStreamExt;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
@@ -101,6 +102,16 @@ pub struct UpdateCustomerRequest<'a> {
     /// The tax ID details to display on the customer's invoice.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tax_id: Option<TaxIdRequest<'a>>,
+}
+
+// Deleted variants are immediately filtered out, so boxing the larger
+// `Normal` variant would result in an unnecessary heap allocation.
+#[allow(clippy::large_enum_variant)]
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum CustomerResponse {
+    Normal(Customer),
+    Deleted { id: String, deleted: bool },
 }
 
 /// An Orb customer.
@@ -216,6 +227,23 @@ impl Client {
     ) -> impl Stream<Item = Result<Customer, Error>> + '_ {
         let req = self.build_request(Method::GET, CUSTOMERS_PATH);
         self.stream_paginated_request(params, req)
+            .try_filter_map(|res| async {
+                match res {
+                    CustomerResponse::Normal(c) => Ok(Some(c)),
+                    CustomerResponse::Deleted {
+                        id: _,
+                        deleted: true,
+                    } => Ok(None),
+                    CustomerResponse::Deleted { id, deleted: false } => {
+                        Err(Error::UnexpectedResponse {
+                            detail: format!(
+                                "customer {id} used deleted response shape \
+                                but deleted field was `false`"
+                            ),
+                        })
+                    }
+                }
+            })
     }
 
     /// Creates a new customer.
