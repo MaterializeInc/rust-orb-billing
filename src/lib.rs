@@ -43,11 +43,15 @@ mod serde;
 mod util;
 
 pub use client::customers::{
-    Address, AddressRequest, CreateCustomerRequest, Customer, CustomerIdFilter, PaymentProvider,
-    UpdateCustomerRequest,
+    Address, AddressRequest, CreateCustomerRequest, Customer, CustomerId,
+    CustomerPaymentProviderRequest, PaymentProvider, UpdateCustomerRequest,
 };
 pub use client::invoices::{Invoice, InvoiceCustomer, InvoiceListParams, InvoiceSubscription};
-pub use client::subscriptions::{Subscription, SubscriptionListParams, SubscriptionStatus};
+pub use client::marketplaces::ExternalMarketplace;
+pub use client::plans::PlanId;
+pub use client::subscriptions::{
+    CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus,
+};
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;
 pub use config::{ClientBuilder, ClientConfig, ListParams};

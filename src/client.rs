@@ -25,6 +25,7 @@ use crate::{ClientBuilder, ClientConfig, Error};
 
 pub mod customers;
 pub mod invoices;
+pub mod marketplaces;
 pub mod plans;
 pub mod subscriptions;
 pub mod taxes;

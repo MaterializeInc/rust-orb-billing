@@ -38,8 +38,10 @@ use test_log::test;
 use tracing::info;
 
 use orb_billing::{
-    Address, AddressRequest, Client, ClientConfig, CreateCustomerRequest, Error, InvoiceListParams,
-    ListParams, SubscriptionListParams, TaxId, TaxIdRequest, UpdateCustomerRequest,
+    Address, AddressRequest, Client, ClientConfig, CreateCustomerRequest,
+    CreateSubscriptionRequest, CustomerId, CustomerPaymentProviderRequest, Error,
+    InvoiceListParams, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
+    UpdateCustomerRequest,
 };
 
 /// The API key to authenticate with.
@@ -252,16 +254,71 @@ async fn test_plans() {
 #[test(tokio::test)]
 async fn test_subscriptions() {
     let client = new_client();
+    let nonce = rand::thread_rng().gen::<u32>();
+    delete_all_test_customers(&client).await;
 
-    let subscriptions: Vec<_> = client
+    let mut customers = vec![];
+    let mut subscriptions = vec![];
+
+    // Test creating and retrieving subscriptions.
+    for i in 0..3 {
+        let customer = client
+            .create_customer(&CreateCustomerRequest {
+                name: &format!("{TEST_PREFIX}-{nonce}-{i}"),
+                email: "orb-testing-{i}@materialize.com",
+                external_id: None,
+                payment_provider: Some(CustomerPaymentProviderRequest {
+                    kind: PaymentProvider::Stripe,
+                    id: "cus_fake_{i}",
+                }),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        let subscription = client
+            .create_subscription(&CreateSubscriptionRequest {
+                customer_id: CustomerId::Orb(&customer.id),
+                plan_id: orb_billing::PlanId::External("test"),
+                net_terms: Some(3),
+                auto_collection: Some(true),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(subscription.customer.id, customer.id);
+        assert_eq!(subscription.plan.external_id.as_deref(), Some("test"));
+        assert_eq!(subscription.net_terms, 3);
+        assert!(subscription.auto_collection);
+
+        let fetched_subscription = client.get_subscription(&subscription.id).await.unwrap();
+        assert_eq!(fetched_subscription, subscription);
+
+        customers.push(customer);
+        subscriptions.push(subscription);
+    }
+
+    // Test that listing subscriptions returns all subscriptions.
+    let mut fetched_subscriptions: Vec<_> = client
         .list_subscriptions(&SubscriptionListParams::default())
         .try_collect()
         .await
         .unwrap();
-    println!("subscriptions = {:#?}", subscriptions);
+    // List returns subscriptions most recent first. Reverse to match ordering
+    // of subscriptions.
+    fetched_subscriptions.reverse();
+    assert_eq!(fetched_subscriptions, subscriptions);
 
-    // TODO: validate list results.
-    // TODO: test get_subscription.
+    // Test that the list can be filtered to a single customer.
+    let fetched_subscriptions: Vec<_> = client
+        .list_subscriptions(
+            &SubscriptionListParams::default().customer_id(CustomerId::Orb(&customers[0].id)),
+        )
+        .try_collect()
+        .await
+        .unwrap();
+    assert_eq!(fetched_subscriptions, &[subscriptions.remove(0)]);
 }
 
 #[test(tokio::test)]
