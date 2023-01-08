@@ -24,10 +24,11 @@
 //!
 //! because each test competes for access to the same Orb account.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fmt;
 
+use ::time::{OffsetDateTime, Time};
 use codes_iso_3166::part_1::CountryCode;
 use futures::future;
 use futures::stream::TryStreamExt;
@@ -35,11 +36,15 @@ use once_cell::sync::Lazy;
 use rand::Rng;
 use reqwest::StatusCode;
 use test_log::test;
+use tokio::time::{self, Duration};
 use tracing::info;
 
 use orb_billing::{
-    Address, AddressRequest, Client, ClientConfig, CreateCustomerRequest, Error, InvoiceListParams,
-    ListParams, SubscriptionListParams, TaxId, TaxIdRequest, UpdateCustomerRequest,
+    Address, AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
+    CreateSubscriptionRequest, Customer, CustomerId, CustomerPaymentProviderRequest, Error, Event,
+    EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams,
+    ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
+    UpdateCustomerRequest,
 };
 
 /// The API key to authenticate with.
@@ -73,6 +78,22 @@ async fn delete_all_test_customers(client: &Client) {
         .try_for_each_concurrent(Some(CONCURRENCY_LIMIT), |customer| async move {
             info!(%customer.id, "deleting custome");
             client.delete_customer(&customer.id).await
+        })
+        .await
+        .unwrap()
+}
+
+async fn create_test_customer(client: &Client, i: usize) -> Customer {
+    client
+        .create_customer(&CreateCustomerRequest {
+            name: &format!("{TEST_PREFIX}-{i}"),
+            email: "orb-testing-{i}@materialize.com",
+            external_id: None,
+            payment_provider: Some(CustomerPaymentProviderRequest {
+                kind: PaymentProvider::Stripe,
+                id: "cus_fake_{i}",
+            }),
+            ..Default::default()
         })
         .await
         .unwrap()
@@ -233,6 +254,185 @@ async fn test_customers() {
 }
 
 #[test(tokio::test)]
+async fn test_events() {
+    // Set up.
+    let client = new_client();
+    let nonce = rand::thread_rng().gen::<u32>();
+    delete_all_test_customers(&client).await;
+
+    let customer_idx = 0;
+    let customer = create_test_customer(&client, customer_idx).await;
+
+    // Create data for three events.
+    let mut ids = vec![];
+    let mut timestamps = vec![];
+    for i in 0..3 {
+        let id = format!("event-{nonce}-{i}");
+        let time = Time::from_hms(i, 0, 0).unwrap();
+        let timestamp = OffsetDateTime::now_utc().replace_time(time);
+        ids.push(id);
+        timestamps.push(timestamp);
+    }
+
+    // Test that ingesting two new events results in Orb accepting both of them.
+    let events = client
+        .ingest_events(
+            IngestionMode::Debug,
+            &[
+                IngestEventRequest {
+                    customer_id: CustomerId::Orb(&customer.id),
+                    idempotency_key: &ids[0],
+                    event_name: "test",
+                    properties: &BTreeMap::new(),
+                    timestamp: timestamps[0],
+                },
+                IngestEventRequest {
+                    customer_id: CustomerId::Orb(&customer.id),
+                    idempotency_key: &ids[1],
+                    event_name: "test",
+                    properties: &BTreeMap::new(),
+                    timestamp: timestamps[1],
+                },
+            ],
+        )
+        .await
+        .unwrap();
+    assert!(events.debug.as_ref().unwrap().duplicate.is_empty());
+    assert_eq!(
+        events.debug.as_ref().unwrap().ingested,
+        vec![ids[0].clone(), ids[1].clone()]
+    );
+
+    // Test that ingesting one new event and one old event results in Orb
+    // accepting only the new event.
+    let events = client
+        .ingest_events(
+            IngestionMode::Debug,
+            &[
+                IngestEventRequest {
+                    customer_id: CustomerId::Orb(&customer.id),
+                    idempotency_key: &ids[1],
+                    event_name: "test",
+                    properties: &BTreeMap::new(),
+                    timestamp: timestamps[1],
+                },
+                IngestEventRequest {
+                    customer_id: CustomerId::Orb(&customer.id),
+                    idempotency_key: &ids[2],
+                    event_name: "test",
+                    properties: &BTreeMap::new(),
+                    timestamp: timestamps[2],
+                },
+            ],
+        )
+        .await
+        .unwrap();
+    assert_eq!(
+        events.debug.as_ref().unwrap().duplicate,
+        vec![ids[1].clone()]
+    );
+    assert_eq!(
+        events.debug.as_ref().unwrap().ingested,
+        vec![ids[2].clone()]
+    );
+
+    let events = client
+        .ingest_events(
+            IngestionMode::Production,
+            &[IngestEventRequest {
+                customer_id: CustomerId::Orb(&customer.id),
+                idempotency_key: &ids[1],
+                event_name: "test",
+                properties: &BTreeMap::new(),
+                timestamp: timestamps[1],
+            }],
+        )
+        .await
+        .unwrap();
+    assert!(events.debug.is_none());
+
+    // Test that all ingested events are reported in search results.
+    let events: Vec<_> = client
+        .search_events(&EventSearchParams::default().event_ids(&[&ids[0], &ids[1], &ids[2]]))
+        .try_collect()
+        .await
+        .unwrap();
+    assert_eq!(
+        events,
+        vec![
+            Event {
+                id: ids[2].clone(),
+                customer_id: customer.id.clone(),
+                external_customer_id: None,
+                event_name: "test".into(),
+                properties: BTreeMap::new(),
+                timestamp: timestamps[2],
+            },
+            Event {
+                id: ids[1].clone(),
+                customer_id: customer.id.clone(),
+                external_customer_id: None,
+                event_name: "test".into(),
+                properties: BTreeMap::new(),
+                timestamp: timestamps[1],
+            },
+            Event {
+                id: ids[0].clone(),
+                customer_id: customer.id.clone(),
+                external_customer_id: None,
+                event_name: "test".into(),
+                properties: BTreeMap::new(),
+                timestamp: timestamps[0],
+            },
+        ]
+    );
+
+    // Test amending an event.
+    let mut properties = BTreeMap::new();
+    properties.insert("test".into(), EventPropertyValue::Bool(false));
+    client
+        .amend_event(
+            &ids[0],
+            &AmendEventRequest {
+                customer_id: CustomerId::Orb(&customer.id),
+                event_name: "new test",
+                properties: &properties,
+                timestamp: timestamps[0],
+            },
+        )
+        .await
+        .unwrap();
+    // Extremely sketchy sleep seems to be required for search results to
+    // reflect the amendment.
+    time::sleep(Duration::from_secs(15)).await;
+    let events: Vec<_> = client
+        .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+        .try_collect()
+        .await
+        .unwrap();
+    assert_eq!(
+        events,
+        vec![Event {
+            id: ids[0].clone(),
+            customer_id: customer.id.clone(),
+            external_customer_id: None,
+            event_name: "new test".into(),
+            properties: properties.clone(),
+            timestamp: timestamps[0],
+        },]
+    );
+
+    // Test that deprecating an event removes it from search results.
+    client.deprecate_event(&ids[0]).await.unwrap();
+    let events: Vec<_> = client
+        .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+        .try_collect()
+        .await
+        .unwrap();
+    assert!(events.is_empty());
+}
+
+#[test(tokio::test)]
 async fn test_plans() {
     let client = new_client();
 
@@ -252,16 +452,58 @@ async fn test_plans() {
 #[test(tokio::test)]
 async fn test_subscriptions() {
     let client = new_client();
+    delete_all_test_customers(&client).await;
 
-    let subscriptions: Vec<_> = client
+    let mut customers = vec![];
+    let mut subscriptions = vec![];
+
+    // Test creating and retrieving subscriptions.
+    for i in 0..3 {
+        let customer = create_test_customer(&client, i).await;
+
+        let subscription = client
+            .create_subscription(&CreateSubscriptionRequest {
+                customer_id: CustomerId::Orb(&customer.id),
+                plan_id: orb_billing::PlanId::External("test"),
+                net_terms: Some(3),
+                auto_collection: Some(true),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        assert_eq!(subscription.customer.id, customer.id);
+        assert_eq!(subscription.plan.external_id.as_deref(), Some("test"));
+        assert_eq!(subscription.net_terms, 3);
+        assert!(subscription.auto_collection);
+
+        let fetched_subscription = client.get_subscription(&subscription.id).await.unwrap();
+        assert_eq!(fetched_subscription, subscription);
+
+        customers.push(customer);
+        subscriptions.push(subscription);
+    }
+
+    // Test that listing subscriptions returns all subscriptions.
+    let mut fetched_subscriptions: Vec<_> = client
         .list_subscriptions(&SubscriptionListParams::default())
         .try_collect()
         .await
         .unwrap();
-    println!("subscriptions = {:#?}", subscriptions);
+    // List returns subscriptions most recent first. Reverse to match ordering
+    // of subscriptions.
+    fetched_subscriptions.reverse();
+    assert_eq!(fetched_subscriptions, subscriptions);
 
-    // TODO: validate list results.
-    // TODO: test get_subscription.
+    // Test that the list can be filtered to a single customer.
+    let fetched_subscriptions: Vec<_> = client
+        .list_subscriptions(
+            &SubscriptionListParams::default().customer_id(CustomerId::Orb(&customers[0].id)),
+        )
+        .try_collect()
+        .await
+        .unwrap();
+    assert_eq!(fetched_subscriptions, &[subscriptions.remove(0)]);
 }
 
 #[test(tokio::test)]

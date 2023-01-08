@@ -15,7 +15,7 @@
 
 use futures_core::Stream;
 use reqwest::Method;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use time::OffsetDateTime;
 
 use crate::client::Client;
@@ -24,6 +24,23 @@ use crate::error::Error;
 use crate::util::StrIteratorExt;
 
 const PLANS_PATH: [&str; 1] = ["plans"];
+
+/// A plan ID.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub enum PlanId<'a> {
+    /// An Orb plan ID.
+    #[serde(rename = "plan_id")]
+    Orb(&'a str),
+    /// An external plan ID.
+    #[serde(rename = "external_plan_id")]
+    External(&'a str),
+}
+
+impl<'a> Default for PlanId<'a> {
+    fn default() -> PlanId<'a> {
+        PlanId::Orb("")
+    }
+}
 
 /// An Orb plan.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]

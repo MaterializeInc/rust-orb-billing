@@ -31,13 +31,21 @@ use crate::util::StrIteratorExt;
 
 const CUSTOMERS_PATH: [&str; 1] = ["customers"];
 
-/// A customer ID for use in filters.
-#[derive(Debug, Clone)]
-pub enum CustomerIdFilter<'a> {
+/// A customer ID.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub enum CustomerId<'a> {
     /// An Orb customer ID.
+    #[serde(rename = "customer_id")]
     Orb(&'a str),
     /// A external customer ID.
+    #[serde(rename = "external_customer_id")]
     External(&'a str),
+}
+
+impl<'a> Default for CustomerId<'a> {
+    fn default() -> CustomerId<'a> {
+        CustomerId::Orb("")
+    }
 }
 
 /// The subset of [`Customer`] used in create requests.
@@ -56,13 +64,10 @@ pub struct CreateCustomerRequest<'a> {
     /// database.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub timezone: Option<&'a str>,
-    /// The ID of this customer in an external payments solution, such as
-    /// Stripe.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub payment_provider_id: Option<&'a str>,
     /// The external payments or invoicing solution connected to the customer.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub payment_provider: Option<PaymentProvider>,
+    #[serde(flatten)]
+    pub payment_provider: Option<CustomerPaymentProviderRequest<'a>>,
     /// The customer's shipping address.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shipping_address: Option<AddressRequest<'a>>,
@@ -86,13 +91,10 @@ pub struct UpdateCustomerRequest<'a> {
     /// A valid email for the customer, to be used for notifications.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<&'a str>,
-    /// The ID of this customer in an external payments solution, such as
-    /// Stripe.
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub payment_provider_id: Option<&'a str>,
     /// The external payments or invoicing solution connected to the customer.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub payment_provider: Option<PaymentProvider>,
+    #[serde(flatten)]
+    pub payment_provider: Option<CustomerPaymentProviderRequest<'a>>,
     /// The customer's shipping address.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shipping_address: Option<AddressRequest<'a>>,
@@ -104,12 +106,24 @@ pub struct UpdateCustomerRequest<'a> {
     pub tax_id: Option<TaxIdRequest<'a>>,
 }
 
+/// Configures an external payment or invoicing solution for a customer.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct CustomerPaymentProviderRequest<'a> {
+    /// The external payments or invoicing solution type.
+    #[serde(rename = "payment_provider")]
+    pub kind: PaymentProvider,
+    /// The ID of this customer in an external payments solution, such as
+    /// Stripe.
+    #[serde(rename = "payment_provider_id")]
+    pub id: &'a str,
+}
+
 // Deleted variants are immediately filtered out, so boxing the larger
 // `Normal` variant would result in an unnecessary heap allocation.
 #[allow(clippy::large_enum_variant)]
 #[derive(Deserialize)]
 #[serde(untagged)]
-enum CustomerResponse {
+pub(crate) enum CustomerResponse {
     Normal(Customer),
     Deleted { id: String, deleted: bool },
 }

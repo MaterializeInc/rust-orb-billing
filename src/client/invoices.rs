@@ -18,7 +18,7 @@ use reqwest::Method;
 use serde::Deserialize;
 use time::OffsetDateTime;
 
-use crate::client::customers::CustomerIdFilter;
+use crate::client::customers::CustomerId;
 use crate::client::Client;
 use crate::config::ListParams;
 use crate::error::Error;
@@ -69,7 +69,7 @@ pub struct InvoiceSubscription {
 #[derive(Debug, Clone)]
 pub struct InvoiceListParams<'a> {
     inner: ListParams,
-    customer_filter: Option<CustomerIdFilter<'a>>,
+    customer_filter: Option<CustomerId<'a>>,
     subscription_filter: Option<&'a str>,
 }
 
@@ -98,7 +98,7 @@ impl<'a> InvoiceListParams<'a> {
     }
 
     /// Filters the listing to the specified customer ID.
-    pub const fn customer_id(mut self, filter: CustomerIdFilter<'a>) -> Self {
+    pub const fn customer_id(mut self, filter: CustomerId<'a>) -> Self {
         self.customer_filter = Some(filter);
         self
     }
@@ -122,8 +122,8 @@ impl Client {
         let req = self.build_request(Method::GET, INVOICES);
         let req = match params.customer_filter {
             None => req,
-            Some(CustomerIdFilter::Orb(id)) => req.query(&[("customer_id", id)]),
-            Some(CustomerIdFilter::External(id)) => req.query(&[("external_customer_id", id)]),
+            Some(CustomerId::Orb(id)) => req.query(&[("customer_id", id)]),
+            Some(CustomerId::External(id)) => req.query(&[("external_customer_id", id)]),
         };
         let req = match params.subscription_filter {
             None => req,
