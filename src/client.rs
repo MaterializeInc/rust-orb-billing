@@ -24,6 +24,7 @@ use crate::error::ApiError;
 use crate::{ClientBuilder, ClientConfig, Error};
 
 pub mod customers;
+pub mod events;
 pub mod invoices;
 pub mod marketplaces;
 pub mod plans;
