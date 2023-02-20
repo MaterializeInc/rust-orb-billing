@@ -129,7 +129,7 @@ pub(crate) enum CustomerResponse {
 }
 
 /// An Orb customer.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Customer {
     /// The Orb-assigned unique identifier for the customer.
     pub id: String,

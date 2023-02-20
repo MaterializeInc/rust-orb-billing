@@ -43,7 +43,7 @@ impl<'a> Default for PlanId<'a> {
 }
 
 /// An Orb plan.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Plan {
     /// The Orb-assigned unique identifier for the plan.
     pub id: String,
