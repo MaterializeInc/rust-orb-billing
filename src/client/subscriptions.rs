@@ -89,7 +89,7 @@ pub struct SubscriptionExternalMarketplaceRequest<'a> {
 }
 
 /// An Orb subscription.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Subscription<C = Customer> {
     /// The Orb-assigned unique identifier for the subscription.
     pub id: String,
@@ -155,7 +155,7 @@ pub enum SubscriptionStatus {
 }
 
 /// An entry in [`Subscription::fixed_fee_quantity_schedule`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct SubscriptionFixedFee {
     /// The date at which the fixed fee starts.
     #[serde(with = "time::serde::rfc3339")]
