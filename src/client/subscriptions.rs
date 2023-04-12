@@ -76,6 +76,11 @@ pub struct CreateSubscriptionRequest<'a> {
     /// If `None`, the value is determined by the plan configuration.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub default_invoice_memo: Option<&'a str>,
+    /// An idempotency key can ensure that if the same request comes in
+    /// multiple times in a 48-hour period, only one makes changes.
+    /// NOTE: this is passed in a request header, not the body
+    #[serde(skip_serializing)]
+    pub idempotency_key: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -263,7 +268,11 @@ impl Client {
         &self,
         subscription: &CreateSubscriptionRequest<'_>,
     ) -> Result<Subscription, Error> {
-        let req = self.build_request(Method::POST, SUBSCRIPTIONS_PATH);
+        let mut req = self.build_request(Method::POST, SUBSCRIPTIONS_PATH);
+        if let Some(key) = subscription.idempotency_key {
+            req = req.header("Idempotency-Key", key);
+        }
+
         let req = req.json(subscription);
         let res = self.send_request(req).await?;
         Ok(res)

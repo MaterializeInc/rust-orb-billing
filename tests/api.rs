@@ -93,6 +93,7 @@ async fn create_test_customer(client: &Client, i: usize) -> Customer {
                 kind: PaymentProvider::Stripe,
                 id: "cus_fake_{i}",
             }),
+            idempotency_key: Some(&format!("test-customer-{i}")),
             ..Default::default()
         })
         .await
@@ -126,6 +127,7 @@ async fn test_customers() {
             email,
             external_id: Some(&*external_id),
             timezone: Some("America/New_York"),
+            idempotency_key: Some(&external_id),
             ..Default::default()
         })
         .await
@@ -149,6 +151,30 @@ async fn test_customers() {
         .get_customer_by_external_id(&external_id)
         .await
         .unwrap();
+    assert_eq!(customer.name, name);
+    assert_eq!(customer.email, email);
+
+    // Test a second creation request with the same idempotency key does
+    // *not* create a new instance, as confirmed when fetching by external ID
+    let customer2 = client
+        .create_customer(&CreateCustomerRequest {
+            name: &name,
+            email,
+            external_id: Some(&*external_id),
+            timezone: Some("America/New_York"),
+            idempotency_key: Some(&external_id),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(customer2.id, customer.id);
+    assert_eq!(customer2.name, name);
+    assert_eq!(customer2.email, email);
+    let customer2 = client
+        .get_customer_by_external_id(&external_id)
+        .await
+        .unwrap();
+    assert_eq!(customer2.id, customer.id);
     assert_eq!(customer.name, name);
     assert_eq!(customer.email, email);
 
@@ -460,6 +486,7 @@ async fn test_subscriptions() {
     // Test creating and retrieving subscriptions.
     for i in 0..3 {
         let customer = create_test_customer(&client, i).await;
+        let idempotency_key = format!("test-subscription-{i}");
 
         let subscription = client
             .create_subscription(&CreateSubscriptionRequest {
@@ -467,6 +494,21 @@ async fn test_subscriptions() {
                 plan_id: orb_billing::PlanId::External("test"),
                 net_terms: Some(3),
                 auto_collection: Some(true),
+                idempotency_key: Some(&idempotency_key),
+                ..Default::default()
+            })
+            .await
+            .unwrap();
+
+        // A second creation request tests that the idempotency key is serving
+        // its purpose by not overwriting the values from the first request
+        client
+            .create_subscription(&CreateSubscriptionRequest {
+                customer_id: CustomerId::Orb(&customer.id),
+                plan_id: orb_billing::PlanId::External("test"),
+                net_terms: Some(11),
+                auto_collection: Some(true),
+                idempotency_key: Some(&idempotency_key),
                 ..Default::default()
             })
             .await

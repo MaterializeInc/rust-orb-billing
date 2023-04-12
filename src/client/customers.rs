@@ -80,6 +80,11 @@ pub struct CreateCustomerRequest<'a> {
     /// The tax ID details to display on the customer's invoice.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tax_id: Option<TaxIdRequest<'a>>,
+    /// An idempotency key can ensure that if the same request comes in
+    /// multiple times in a 48-hour period, only one makes changes.
+    /// NOTE: this is passed in a request header, not the body
+    #[serde(skip_serializing)]
+    pub idempotency_key: Option<&'a str>,
 }
 
 /// The subset of [`Customer`] used in update requests.
@@ -265,7 +270,10 @@ impl Client {
         &self,
         customer: &CreateCustomerRequest<'_>,
     ) -> Result<Customer, Error> {
-        let req = self.build_request(Method::POST, CUSTOMERS_PATH);
+        let mut req = self.build_request(Method::POST, CUSTOMERS_PATH);
+        if let Some(key) = customer.idempotency_key {
+            req = req.header("Idempotency-Key", key);
+        }
         let req = req.json(customer);
         let res = self.send_request(req).await?;
         Ok(res)
