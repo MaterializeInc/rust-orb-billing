@@ -21,15 +21,14 @@ jobs:
             os: ubuntu-latest
             rust: 1.65.0
     steps:
-    - uses: actions/checkout@v2
-    - uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        default: true
-    - run: cargo test -- --test-threads=1
-      env:
-        ORB_API_KEY: ${{ secrets.ORB_API_KEY }}
-
+      - uses: actions/checkout@v2
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          default: true
+      - run: cargo test -- --test-threads=1
+        env:
+          ORB_API_KEY: ${{ secrets.ORB_API_KEY }}
   fmt:
     name: fmt
     runs-on: ubuntu-latest
@@ -41,7 +40,6 @@ jobs:
         default: true
         components: rustfmt
     - run: cargo fmt -- --check
-
   clippy:
     name: clippy
     runs-on: ubuntu-latest

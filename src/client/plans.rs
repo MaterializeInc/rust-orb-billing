@@ -52,7 +52,7 @@ pub struct Plan {
     #[serde(rename = "external_plan_id")]
     pub external_id: Option<String>,
     /// A human-readable name for the plan.
-    pub name: String,
+    pub name: Option<String>,
     /// A human-readable description of the plan.
     pub description: String,
     /// The time at which the plan was created.

@@ -78,7 +78,7 @@ pub struct CreateSubscriptionRequest<'a> {
     pub default_invoice_memo: Option<&'a str>,
     /// An idempotency key can ensure that if the same request comes in
     /// multiple times in a 48-hour period, only one makes changes.
-    /// NOTE: this is passed in a request header, not the body
+    // NOTE: this is passed in a request header, not the body
     #[serde(skip_serializing)]
     pub idempotency_key: Option<&'a str>,
 }
