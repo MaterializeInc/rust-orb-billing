@@ -126,6 +126,7 @@ async fn test_customers() {
             email,
             external_id: Some(&*external_id),
             timezone: Some("America/New_York"),
+            idempotency_key: Some(&external_id),
             ..Default::default()
         })
         .await
@@ -151,6 +152,23 @@ async fn test_customers() {
         .unwrap();
     assert_eq!(customer.name, name);
     assert_eq!(customer.email, email);
+
+    // Test a second creation request with the same idempotency key does
+    // *not* create a new instance
+    let res = client
+        .create_customer(&CreateCustomerRequest {
+            name: &name,
+            email,
+            external_id: Some(&format!("{external_id}-0")),
+            timezone: Some("America/Chicago"),
+            idempotency_key: Some(&external_id),
+            ..Default::default()
+        })
+        .await;
+    match res.expect_err("Request with idempotency key did not error") {
+        Error::Api(e) if e.status_code == 409 => println!("Received expected conflict status"),
+        x => panic!("Got unexpected error: {x:?}"),
+    }
 
     // Test updating the customer by ID.
     let customer = client
@@ -298,10 +316,10 @@ async fn test_events() {
         .await
         .unwrap();
     assert!(events.debug.as_ref().unwrap().duplicate.is_empty());
-    assert_eq!(
-        events.debug.as_ref().unwrap().ingested,
-        vec![ids[0].clone(), ids[1].clone()]
-    );
+    // Ensure that the objects are sorted so that lists compare equal
+    let mut ingested = events.debug.as_ref().unwrap().ingested.clone();
+    ingested.sort();
+    assert_eq!(ingested, vec![ids[0].clone(), ids[1].clone()]);
 
     // Test that ingesting one new event and one old event results in Orb
     // accepting only the new event.
@@ -350,6 +368,10 @@ async fn test_events() {
         .await
         .unwrap();
     assert!(events.debug.is_none());
+
+    // Extremely sketchy sleep seems to be required for search results to
+    // reflect the ingestion
+    time::sleep(Duration::from_secs(20)).await;
 
     // Test that all ingested events are reported in search results.
     let events: Vec<_> = client
@@ -402,9 +424,11 @@ async fn test_events() {
         )
         .await
         .unwrap();
+
     // Extremely sketchy sleep seems to be required for search results to
     // reflect the amendment.
-    time::sleep(Duration::from_secs(15)).await;
+    time::sleep(Duration::from_secs(30)).await;
+
     let events: Vec<_> = client
         .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
         .try_collect()
@@ -454,12 +478,14 @@ async fn test_subscriptions() {
     let client = new_client();
     delete_all_test_customers(&client).await;
 
+    let nonce = rand::thread_rng().gen::<u32>();
     let mut customers = vec![];
     let mut subscriptions = vec![];
 
     // Test creating and retrieving subscriptions.
     for i in 0..3 {
         let customer = create_test_customer(&client, i).await;
+        let idempotency_key = format!("test-subscription-{nonce}-{i}");
 
         let subscription = client
             .create_subscription(&CreateSubscriptionRequest {
@@ -467,6 +493,7 @@ async fn test_subscriptions() {
                 plan_id: orb_billing::PlanId::External("test"),
                 net_terms: Some(3),
                 auto_collection: Some(true),
+                idempotency_key: Some(&idempotency_key),
                 ..Default::default()
             })
             .await
@@ -476,6 +503,23 @@ async fn test_subscriptions() {
         assert_eq!(subscription.plan.external_id.as_deref(), Some("test"));
         assert_eq!(subscription.net_terms, 3);
         assert!(subscription.auto_collection);
+
+        // A second creation request tests that the idempotency key is serving
+        // its purpose!
+        let res = client
+            .create_subscription(&CreateSubscriptionRequest {
+                customer_id: CustomerId::Orb(&customer.id),
+                plan_id: orb_billing::PlanId::External("test"),
+                net_terms: Some(11),
+                auto_collection: Some(false),
+                idempotency_key: Some(&idempotency_key),
+                ..Default::default()
+            })
+            .await;
+        match res.expect_err("Request with idempotency key did not error") {
+            Error::Api(e) if e.status_code == 409 => println!("Received expected conflict status"),
+            x => panic!("Got unexpected error: {x:?}"),
+        }
 
         let fetched_subscription = client.get_subscription(&subscription.id).await.unwrap();
         assert_eq!(fetched_subscription, subscription);

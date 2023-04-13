@@ -86,19 +86,23 @@ impl Client {
         if status_code.is_success() {
             Ok(res.json().await?)
         } else {
-            match res.json::<ErrorResponse>().await {
+            let res_body = res.text().await?;
+            match serde_json::from_str::<ErrorResponse>(&res_body) {
                 Ok(e) => Err(Error::Api(ApiError {
                     status_code,
                     title: e.title,
                     detail: e.detail,
                     validation_errors: e.validation_errors,
                 })),
-                Err(_) => Err(Error::Api(ApiError {
-                    status_code,
-                    title: "decoding failure".into(),
-                    detail: Some("unable to decode API response as JSON".into()),
-                    validation_errors: vec![],
-                })),
+                Err(e) => {
+                    eprintln!("There's been an API error! {e:?} from {res_body:?}");
+                    Err(Error::Api(ApiError {
+                        status_code,
+                        title: "decoding failure".into(),
+                        detail: Some("unable to decode API response as JSON".into()),
+                        validation_errors: vec![],
+                    }))
+                }
             }
         }
     }
