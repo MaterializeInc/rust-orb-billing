@@ -8,7 +8,7 @@ license = "Apache-2.0"
 categories = ["api-bindings", "web-programming"]
 keywords = ["orb", "billing", "api", "sdk"]
 repository = "https://github.com/MaterializeInc/rust-orb-billing"
-version = "0.3.0"
+version = "0.2.0"
 rust-version = "1.65"
 edition = "2021"
 
