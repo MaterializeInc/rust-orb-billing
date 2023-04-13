@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.3.0] - 2023-04-13
+
 * Add support for request idempotency keys to `Client::create_customer` and
   `Client::create_subscription`.
 
@@ -24,7 +26,8 @@ Versioning].
 Initial release.
 
 <!-- #release:next-url -->
-[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.1.0...v0.2.0
 
 [Keep a Changelog]: https://keepachangelog.com/en/1.0.0/
