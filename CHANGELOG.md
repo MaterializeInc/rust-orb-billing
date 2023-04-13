@@ -9,6 +9,9 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add support for request idempotency keys to `Client::create_customer` and
+  `Client::create_subscription`.
+
 ## [0.2.0] - 2023-03-07
 
 * Uniformly derive `Serialize` and `Deserialize` on all API types, even if the
