@@ -47,6 +47,8 @@ pub struct Invoice {
     pub created_at: OffsetDateTime,
     /// The link to the hosted invoice
     pub hosted_invoice_url: Option<String>,
+    /// The status (see [`InvoiceStatusFilter`] for details)
+    pub status: String,
     // TODO: many missing fields.
 }
 
