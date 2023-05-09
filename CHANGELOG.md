@@ -9,6 +9,14 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.4.0] - 2023-05-09
+
+* Add support for non-default status filters in `Client::list_invoices`.
+
+* Return `hosted_invoice_url` as part of `Invoice`, when available.
+
+* Fix bug causing invoices without `invoice_pdf` set to cause errors.
+
 ## [0.3.0] - 2023-04-13
 
 * Add support for request idempotency keys to `Client::create_customer` and
