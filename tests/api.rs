@@ -288,6 +288,8 @@ async fn test_events() {
         let id = format!("event-{nonce}-{i}");
         let time = Time::from_hms(i, 0, 0).unwrap();
         let timestamp = OffsetDateTime::now_utc().replace_time(time);
+        let timestamp =
+            timestamp.replace_date(timestamp.date().next_day().expect("Y10K problem detected"));
         ids.push(id);
         timestamps.push(timestamp);
     }

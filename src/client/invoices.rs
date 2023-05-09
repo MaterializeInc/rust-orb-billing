@@ -39,12 +39,14 @@ pub struct Invoice {
     #[serde(with = "time::serde::rfc3339")]
     pub invoice_date: OffsetDateTime,
     /// The link to download the PDF representation of the invoice.
-    pub invoice_pdf: String,
+    pub invoice_pdf: Option<String>,
     /// The total after any minimums, discounts, and taxes have been applied.
     pub total: String,
     /// The time at which the invoice was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// The link to the hosted invoice
+    pub hosted_invoice_url: Option<String>,
     // TODO: many missing fields.
 }
 
@@ -65,12 +67,49 @@ pub struct InvoiceSubscription {
     pub id: String,
 }
 
+/// Identifies the statuses of which [`Invoice`]s should be returned.
+#[derive(Debug, Clone, Copy)]
+pub struct InvoiceStatusFilter {
+    /// Draft -- invoices in their initial state
+    pub draft: bool,
+    /// Issued -- invoices after their billing period ends
+    pub issued: bool,
+    /// Paid -- invoices upon confirmation of successful automatic
+    /// payment collection
+    pub paid: bool,
+    /// Void -- invoices that have been manually voided
+    pub void: bool,
+    /// Synced -- invoices that have been synced to an external
+    /// billing provider
+    pub synced: bool,
+}
+
+impl Default for InvoiceStatusFilter {
+    fn default() -> Self {
+        Self::DEFAULT
+    }
+}
+
+impl InvoiceStatusFilter {
+    /// The default invoice list status filter.
+    ///
+    /// Exposed as a constant for use in constant evaluation contexts.
+    pub const DEFAULT: InvoiceStatusFilter = InvoiceStatusFilter {
+        issued: true,
+        paid: true,
+        synced: true,
+        draft: false,
+        void: false,
+    };
+}
+
 /// Parameters for a subscription list operation.
 #[derive(Debug, Clone)]
 pub struct InvoiceListParams<'a> {
     inner: ListParams,
     customer_filter: Option<CustomerId<'a>>,
     subscription_filter: Option<&'a str>,
+    status_filter: InvoiceStatusFilter,
 }
 
 impl<'a> Default for InvoiceListParams<'a> {
@@ -87,6 +126,7 @@ impl<'a> InvoiceListParams<'a> {
         inner: ListParams::DEFAULT,
         customer_filter: None,
         subscription_filter: None,
+        status_filter: InvoiceStatusFilter::DEFAULT,
     };
 
     /// Sets the page size for the list operation.
@@ -106,6 +146,12 @@ impl<'a> InvoiceListParams<'a> {
     /// Filters the listing to the specified subscription ID.
     pub const fn subscription_id(mut self, filter: &'a str) -> Self {
         self.subscription_filter = Some(filter);
+        self
+    }
+
+    /// Filters the listing to a specified set of statuses.
+    pub const fn status_filter(mut self, filter: InvoiceStatusFilter) -> Self {
+        self.status_filter = filter;
         self
     }
 }
@@ -129,6 +175,25 @@ impl Client {
             None => req,
             Some(id) => req.query(&[("subscription_id", id)]),
         };
+        let InvoiceStatusFilter {
+            draft,
+            issued,
+            paid,
+            void,
+            synced,
+        } = params.status_filter;
+        let mut req = req;
+        for (name, value) in [
+            ("draft", draft),
+            ("issued", issued),
+            ("paid", paid),
+            ("void", void),
+            ("synced", synced),
+        ] {
+            if value {
+                req = req.query(&[("status[]", name)])
+            }
+        }
         self.stream_paginated_request(&params.inner, req)
     }
 
