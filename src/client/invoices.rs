@@ -39,12 +39,14 @@ pub struct Invoice {
     #[serde(with = "time::serde::rfc3339")]
     pub invoice_date: OffsetDateTime,
     /// The link to download the PDF representation of the invoice.
-    pub invoice_pdf: String,
+    pub invoice_pdf: Option<String>,
     /// The total after any minimums, discounts, and taxes have been applied.
     pub total: String,
     /// The time at which the invoice was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// The link to the hosted invoice
+    pub hosted_invoice_url: Option<String>,
     // TODO: many missing fields.
 }
 
