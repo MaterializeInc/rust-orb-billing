@@ -50,7 +50,9 @@ pub use client::events::{
     AmendEventRequest, Event, EventPropertyValue, EventSearchParams, IngestEventDebugResponse,
     IngestEventRequest, IngestEventResponse, IngestionMode,
 };
-pub use client::invoices::{Invoice, InvoiceCustomer, InvoiceListParams, InvoiceSubscription};
+pub use client::invoices::{
+    Invoice, InvoiceCustomer, InvoiceListParams, InvoiceStatusFilter, InvoiceSubscription,
+};
 pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::PlanId;
 pub use client::subscriptions::{
