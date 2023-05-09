@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.4.0] - 2023-05-09
+
 * Add support for non-default status filters in `Client::list_invoices`.
 
 * Return `hosted_invoice_url` as part of `Invoice`, when available.
@@ -32,7 +34,8 @@ Versioning].
 Initial release.
 
 <!-- #release:next-url -->
-[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.1.0...v0.2.0
 
