@@ -15,7 +15,8 @@
 
 use futures_core::Stream;
 use reqwest::Method;
-use serde::{Deserialize, Serialize};
+use serde::de::Unexpected;
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use time::OffsetDateTime;
 
 use crate::client::customers::CustomerId;
@@ -25,6 +26,47 @@ use crate::error::Error;
 use crate::util::StrIteratorExt;
 
 const INVOICES: [&str; 1] = ["invoices"];
+
+/// An ISO 4217 currency string, or "credits"
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum Currency {
+    Credits,
+    Iso4217(String),
+}
+
+impl<'de> Deserialize<'de> for Currency {
+    fn deserialize<D>(d: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let mut s = String::deserialize(d)?;
+        if s == "credits" {
+            Ok(Self::Credits)
+        } else if s.len() == 3 {
+            s.make_ascii_uppercase();
+            Ok(Self::Iso4217(s))
+        } else {
+            use serde::de::Error;
+            Err(D::Error::invalid_value(
+                Unexpected::Str(&s),
+                &"either \"credits\", or a three-character currency code",
+            ))
+        }
+    }
+}
+
+impl Serialize for Currency {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let s = match self {
+            Currency::Credits => "credits",
+            Currency::Iso4217(code) => &code,
+        };
+        s.serialize(serializer)
+    }
+}
 
 /// An Orb invoice.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -49,6 +91,8 @@ pub struct Invoice {
     pub hosted_invoice_url: Option<String>,
     /// The status (see [`InvoiceStatusFilter`] for details)
     pub status: String,
+    /// The currency in which the invoice is denominated
+    pub currency: Currency,
     // TODO: many missing fields.
 }
 

@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Return `currency` as part of `Invoice`.
+
 ## [0.4.0] - 2023-05-09
 
 * Add support for non-default status filters in `Client::list_invoices`.
