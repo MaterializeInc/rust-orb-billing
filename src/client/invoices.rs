@@ -62,7 +62,7 @@ impl Serialize for Currency {
     {
         let s = match self {
             Currency::Credits => "credits",
-            Currency::Iso4217(code) => &code,
+            Currency::Iso4217(code) => code,
         };
         s.serialize(serializer)
     }
