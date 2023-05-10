@@ -27,7 +27,7 @@ use crate::util::StrIteratorExt;
 
 const INVOICES: [&str; 1] = ["invoices"];
 
-/// An ISO 4217 currency string, or "credits"
+/// An ISO 4217 currency string, or "credits".
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Currency {
     Credits,
@@ -87,11 +87,11 @@ pub struct Invoice {
     /// The time at which the invoice was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
-    /// The link to the hosted invoice
+    /// The link to the hosted invoice.
     pub hosted_invoice_url: Option<String>,
-    /// The status (see [`InvoiceStatusFilter`] for details)
+    /// The status (see [`InvoiceStatusFilter`] for details).
     pub status: String,
-    /// The currency in which the invoice is denominated
+    /// The currency in which the invoice is denominated.
     pub currency: Currency,
     // TODO: many missing fields.
 }
@@ -116,17 +116,17 @@ pub struct InvoiceSubscription {
 /// Identifies the statuses of which [`Invoice`]s should be returned.
 #[derive(Debug, Clone, Copy)]
 pub struct InvoiceStatusFilter {
-    /// Draft -- invoices in their initial state
+    /// Draft -- invoices in their initial state.
     pub draft: bool,
-    /// Issued -- invoices after their billing period ends
+    /// Issued -- invoices after their billing period ends.
     pub issued: bool,
     /// Paid -- invoices upon confirmation of successful automatic
-    /// payment collection
+    /// payment collection.
     pub paid: bool,
-    /// Void -- invoices that have been manually voided
+    /// Void -- invoices that have been manually voided.
     pub void: bool,
     /// Synced -- invoices that have been synced to an external
-    /// billing provider
+    /// billing provider.
     pub synced: bool,
 }
 
