@@ -42,6 +42,10 @@ pub struct Invoice {
     pub invoice_pdf: Option<String>,
     /// The total after any minimums, discounts, and taxes have been applied.
     pub total: String,
+    /// This is the final amount required to be charged to the
+    /// customer and reflects the application of the customer balance
+    /// to the total of the invoice.
+    pub amount_due: String,
     /// The time at which the invoice was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
