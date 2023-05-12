@@ -34,7 +34,7 @@ pub struct Invoice {
     /// The customer to whom this invoice was issued.
     pub customer: InvoiceCustomer,
     /// The subscription associated with this invoice.
-    pub subscription: InvoiceSubscription,
+    pub subscription: Option<InvoiceSubscription>,
     /// The issue date of the invoice.
     #[serde(with = "time::serde::rfc3339")]
     pub invoice_date: OffsetDateTime,
