@@ -429,7 +429,7 @@ async fn test_events() {
 
     // Extremely sketchy sleep seems to be required for search results to
     // reflect the amendment.
-    time::sleep(Duration::from_secs(30)).await;
+    time::sleep(Duration::from_secs(60)).await;
 
     let events: Vec<_> = client
         .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
