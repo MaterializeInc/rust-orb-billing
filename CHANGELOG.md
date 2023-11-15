@@ -9,7 +9,11 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add support for Plan metadata.
+
 ## [0.6.0] - 2023-05-12
+
+* Modified the `InvoiceSubscription` field to be optional.
 
 ## [0.5.0] - 2023-05-11
 

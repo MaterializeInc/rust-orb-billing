@@ -503,6 +503,10 @@ async fn test_subscriptions() {
 
         assert_eq!(subscription.customer.id, customer.id);
         assert_eq!(subscription.plan.external_id.as_deref(), Some("test"));
+        assert_eq!(
+            subscription.plan.metadata.get("purpose"),
+            Some(&"test".to_string())
+        );
         assert_eq!(subscription.net_terms, 3);
         assert!(subscription.auto_collection);
 
