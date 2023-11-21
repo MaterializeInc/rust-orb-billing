@@ -76,7 +76,7 @@ async fn delete_all_test_customers(client: &Client) {
         .list_customers(&MAX_PAGE_LIST_PARAMS)
         .try_filter(|customer| future::ready(customer.name.starts_with(TEST_PREFIX)))
         .try_for_each_concurrent(Some(CONCURRENCY_LIMIT), |customer| async move {
-            info!(%customer.id, "deleting custome");
+            info!(%customer.id, "deleting customer");
             client.delete_customer(&customer.id).await
         })
         .await
@@ -87,11 +87,11 @@ async fn create_test_customer(client: &Client, i: usize) -> Customer {
     client
         .create_customer(&CreateCustomerRequest {
             name: &format!("{TEST_PREFIX}-{i}"),
-            email: "orb-testing-{i}@materialize.com",
+            email: &format!("orb-testing-{i}@materialize.com"),
             external_id: None,
             payment_provider: Some(CustomerPaymentProviderRequest {
                 kind: PaymentProvider::Stripe,
-                id: "cus_fake_{i}",
+                id: &format!("cus_fake_{i}"),
             }),
             ..Default::default()
         })
