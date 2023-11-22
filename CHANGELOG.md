@@ -10,6 +10,7 @@ Versioning].
 ## [Unreleased] <!-- #release:date -->
 
 * Add support for Plan metadata.
+* Bump MSRV to 1.67.
 
 ## [0.6.0] - 2023-05-12
 
