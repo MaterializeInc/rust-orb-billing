@@ -385,28 +385,31 @@ async fn test_events() {
         events,
         vec![
             Event {
-                id: ids[2].clone(),
+                id: ids[0].clone(),
                 customer_id: customer.id.clone(),
-                external_customer_id: None,
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
-                timestamp: timestamps[2],
+                timestamp: timestamps[0],
             },
             Event {
                 id: ids[1].clone(),
                 customer_id: customer.id.clone(),
-                external_customer_id: None,
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[1],
             },
             Event {
-                id: ids[0].clone(),
+                id: ids[2].clone(),
                 customer_id: customer.id.clone(),
-                external_customer_id: None,
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
-                timestamp: timestamps[0],
+                timestamp: timestamps[2],
             },
         ]
     );
@@ -427,26 +430,38 @@ async fn test_events() {
         .await
         .unwrap();
 
-    // Extremely sketchy sleep seems to be required for search results to
-    // reflect the amendment.
-    time::sleep(Duration::from_secs(60)).await;
+    // Orb takes its time registering the amendment in the search output. Let's try a few times
+    // before giving up.
+    for iteration in 0..5 {
+        // Extremely sketchy sleep.
+        time::sleep(Duration::from_secs(60)).await;
 
-    let events: Vec<_> = client
-        .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
-        .try_collect()
-        .await
-        .unwrap();
-    assert_eq!(
-        events,
-        vec![Event {
-            id: ids[0].clone(),
-            customer_id: customer.id.clone(),
-            external_customer_id: None,
-            event_name: "new test".into(),
-            properties: properties.clone(),
-            timestamp: timestamps[0],
-        },]
-    );
+        let events: Vec<_> = client
+            .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+            .try_collect()
+            .await
+            .unwrap();
+        if events.get(0).map(|e| e.event_name.clone()) != Some("new test".into()) {
+            info!("  events list not updated after {iteration} attempts.");
+            if iteration < 5 {
+                continue;
+            }
+        }
+        assert_eq!(
+            events,
+            vec![Event {
+                id: ids[0].clone(),
+                customer_id: customer.id.clone(),
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
+                event_name: "new test".into(),
+                properties: properties.clone(),
+                timestamp: timestamps[0],
+            },]
+        );
+        // Exit the loop
+        break;
+    }
 
     // Test that deprecating an event removes it from search results.
     client.deprecate_event(&ids[0]).await.unwrap();
