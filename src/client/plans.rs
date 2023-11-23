@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeMap;
+
 use futures_core::Stream;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
@@ -58,6 +60,9 @@ pub struct Plan {
     /// The time at which the plan was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// Arbitrary metadata that is attached to the plan. Cannot be nested, must have string values.
+    #[serde(default)]
+    pub metadata: BTreeMap<String, String>,
     // TODO: many missing fields.
 }
 

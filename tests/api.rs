@@ -76,7 +76,7 @@ async fn delete_all_test_customers(client: &Client) {
         .list_customers(&MAX_PAGE_LIST_PARAMS)
         .try_filter(|customer| future::ready(customer.name.starts_with(TEST_PREFIX)))
         .try_for_each_concurrent(Some(CONCURRENCY_LIMIT), |customer| async move {
-            info!(%customer.id, "deleting custome");
+            info!(%customer.id, "deleting customer");
             client.delete_customer(&customer.id).await
         })
         .await
@@ -87,11 +87,11 @@ async fn create_test_customer(client: &Client, i: usize) -> Customer {
     client
         .create_customer(&CreateCustomerRequest {
             name: &format!("{TEST_PREFIX}-{i}"),
-            email: "orb-testing-{i}@materialize.com",
+            email: &format!("orb-testing-{i}@materialize.com"),
             external_id: None,
             payment_provider: Some(CustomerPaymentProviderRequest {
                 kind: PaymentProvider::Stripe,
-                id: "cus_fake_{i}",
+                id: &format!("cus_fake_{i}"),
             }),
             ..Default::default()
         })
@@ -385,28 +385,31 @@ async fn test_events() {
         events,
         vec![
             Event {
-                id: ids[2].clone(),
+                id: ids[0].clone(),
                 customer_id: customer.id.clone(),
-                external_customer_id: None,
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
-                timestamp: timestamps[2],
+                timestamp: timestamps[0],
             },
             Event {
                 id: ids[1].clone(),
                 customer_id: customer.id.clone(),
-                external_customer_id: None,
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[1],
             },
             Event {
-                id: ids[0].clone(),
+                id: ids[2].clone(),
                 customer_id: customer.id.clone(),
-                external_customer_id: None,
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
-                timestamp: timestamps[0],
+                timestamp: timestamps[2],
             },
         ]
     );
@@ -427,26 +430,38 @@ async fn test_events() {
         .await
         .unwrap();
 
-    // Extremely sketchy sleep seems to be required for search results to
-    // reflect the amendment.
-    time::sleep(Duration::from_secs(60)).await;
+    // Orb takes its time registering the amendment in the search output. Let's try a few times
+    // before giving up.
+    for iteration in 0..5 {
+        // Extremely sketchy sleep.
+        time::sleep(Duration::from_secs(60)).await;
 
-    let events: Vec<_> = client
-        .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
-        .try_collect()
-        .await
-        .unwrap();
-    assert_eq!(
-        events,
-        vec![Event {
-            id: ids[0].clone(),
-            customer_id: customer.id.clone(),
-            external_customer_id: None,
-            event_name: "new test".into(),
-            properties: properties.clone(),
-            timestamp: timestamps[0],
-        },]
-    );
+        let events: Vec<_> = client
+            .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+            .try_collect()
+            .await
+            .unwrap();
+        if events.get(0).map(|e| e.event_name.clone()) != Some("new test".into()) {
+            info!("  events list not updated after {iteration} attempts.");
+            if iteration < 5 {
+                continue;
+            }
+        }
+        assert_eq!(
+            events,
+            vec![Event {
+                id: ids[0].clone(),
+                customer_id: customer.id.clone(),
+                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
+                external_customer_id: Some("".into()),
+                event_name: "new test".into(),
+                properties: properties.clone(),
+                timestamp: timestamps[0],
+            },]
+        );
+        // Exit the loop
+        break;
+    }
 
     // Test that deprecating an event removes it from search results.
     client.deprecate_event(&ids[0]).await.unwrap();
@@ -503,6 +518,10 @@ async fn test_subscriptions() {
 
         assert_eq!(subscription.customer.id, customer.id);
         assert_eq!(subscription.plan.external_id.as_deref(), Some("test"));
+        assert_eq!(
+            subscription.plan.metadata.get("purpose"),
+            Some(&"test".to_string())
+        );
         assert_eq!(subscription.net_terms, 3);
         assert!(subscription.auto_collection);
 
