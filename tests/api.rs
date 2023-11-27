@@ -40,7 +40,8 @@ use tokio::time::{self, Duration};
 use tracing::info;
 
 use orb_billing::{
-    Address, AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
+    AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
+    AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
     CreateSubscriptionRequest, Customer, CustomerId, CustomerPaymentProviderRequest, Error, Event,
     EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams,
     LedgerEntry, LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId,
@@ -173,6 +174,12 @@ async fn test_customers() {
         entry => panic!("Expected an Increment, received: {:?}", entry),
     };
     assert_eq!(inc_res.ledger.customer.id, customer.id);
+    let balance: Vec<_> = client
+        .get_customer_credit_balance(&customer.id, &ListParams::default().page_size(1))
+        .try_collect()
+        .await
+        .unwrap();
+    assert_eq!(balance.get(0).unwrap().balance, inc_res.ledger.amount);
     let ledger_res = client
         .create_ledger_entry(
             &customer.id,
@@ -190,6 +197,15 @@ async fn test_customers() {
         entry => panic!("Expected a VoidInitiated, received a {:?}", entry),
     };
     assert_eq!(void_res.ledger.customer.id, customer.id);
+    let balance: Vec<_> = client
+        .get_customer_credit_balance_by_external_id(
+            &customer.external_id.unwrap(),
+            &ListParams::default().page_size(1),
+        )
+        .try_collect()
+        .await
+        .unwrap();
+    assert!(balance.is_empty());
     // Test a second creation request with the same idempotency key does
     // *not* create a new instance
     let res = client

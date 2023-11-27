@@ -309,6 +309,19 @@ pub struct AddVoidCreditLedgerEntryRequestParams<'a> {
     pub description: Option<&'a str>,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct CustomerCreditBlock {
+    /// The Orb-assigned unique identifier for the credit block.
+    pub id: String,
+    /// The remaining credit balance for the block.
+    pub balance: serde_json::Number,
+    /// The date on which the block's balance will expire.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub expiry_date: Option<OffsetDateTime>,
+    /// The price per credit.
+    pub per_unit_cost_basis: Option<String>,
+}
+
 /// The type of ledger entry
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "entry_type")]
@@ -516,6 +529,41 @@ impl Client {
         let req = self.build_request(Method::DELETE, CUSTOMERS_PATH.chain_one(id));
         let _: Empty = self.send_request(req).await?;
         Ok(())
+    }
+
+    /// Fetch all unexpired, non-zero credit blocks for a customer.
+    ///
+    /// The underlying API call is paginated. The returned stream will fetch
+    /// additional pages as it is consumed.
+    pub fn get_customer_credit_balance(
+        &self,
+        id: &str,
+        params: &ListParams,
+    ) -> impl Stream<Item = Result<CustomerCreditBlock, Error>> + '_ {
+        let req = self.build_request(
+            Method::GET,
+            CUSTOMERS_PATH.chain_one(id).chain_one("credits"),
+        );
+        self.stream_paginated_request(params, req)
+    }
+
+    /// Fetch all unexpired, non-zero credit blocks for a customer by external ID.
+    ///
+    /// The underlying API call is paginated. The returned stream will fetch
+    /// additional pages as it is consumed.
+    pub fn get_customer_credit_balance_by_external_id(
+        &self,
+        external_id: &str,
+        params: &ListParams,
+    ) -> impl Stream<Item = Result<CustomerCreditBlock, Error>> + '_ {
+        let req = self.build_request(
+            Method::GET,
+            CUSTOMERS_PATH
+                .chain_one("external_customer_id")
+                .chain_one(external_id)
+                .chain_one("credits"),
+        );
+        self.stream_paginated_request(params, req)
     }
 
     /// Ceate a new ledger entry for the specified customer's balance.
