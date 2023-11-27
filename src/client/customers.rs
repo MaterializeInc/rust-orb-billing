@@ -235,6 +235,190 @@ pub struct Address {
     pub state: Option<String>,
 }
 
+/// The types of ledger entries that can be created.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(tag = "entry_type")]
+pub enum LedgerEntryRequest<'a> {
+    /// Increment a credit balance
+    #[serde(rename = "increment")]
+    Increment(AddIncrementCreditLedgerEntryRequestParams<'a>),
+    /// Void an existing ledger entry
+    #[serde(rename = "void")]
+    Void(AddVoidCreditLedgerEntryRequestParams<'a>),
+    // TODO: additional ledger entry types
+}
+
+/// Optional invoicing settings for a credit purchase.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize)]
+pub struct CreditLedgerInvoiceSettingsRequestParams<'a> {
+    /// Whether the credits purchase invoice should auto collect with the customer's saved payment
+    /// method.
+    pub auto_collection: bool,
+    /// The difference between the invoice date and the issue date for the invoice. If due on issue,
+    /// set this to `0`.
+    pub net_terms: u64,
+    /// An optional memo to display on the invoice
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memo: Option<&'a str>,
+}
+
+/// The parameters used to create a customer credit ledger entry.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct AddIncrementCreditLedgerEntryRequestParams<'a> {
+    /// The amount to credit the customer for.
+    pub amount: serde_json::Number,
+    /// An optional description for the credit operation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'a str>,
+    /// The date on which the block's balance will expire.
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expiry_date: Option<OffsetDateTime>,
+    /// The date on which the block's balance will become available for use.
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effective_date: Option<OffsetDateTime>,
+    /// The price per credit.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub per_unit_cost_basis: Option<&'a str>,
+    /// Invoicing settings for the credit increment request.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invoice_settings: Option<CreditLedgerInvoiceSettingsRequestParams<'a>>,
+}
+
+/// The reason for a void operation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+pub enum VoidReason {
+    /// The credits are being returned to the originator.
+    #[serde(rename = "refund")]
+    Refund,
+}
+
+/// The parameters used to void a customer credit ledger entry.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct AddVoidCreditLedgerEntryRequestParams<'a> {
+    /// The number of credits to void.
+    pub amount: serde_json::Number,
+    /// The ID of the credit ledger block to void.
+    pub block_id: &'a str,
+    /// An optional reason for the void.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub void_reason: Option<VoidReason>,
+    /// An optional description for the void operation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<&'a str>,
+}
+
+/// The type of ledger entry
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "entry_type")]
+pub enum LedgerEntry {
+    /// Incrementing a credit balance
+    #[serde(rename = "increment")]
+    Increment(IncrementLedgerEntry),
+    /// Voiding of an existing ledger entry
+    #[serde(rename = "void")]
+    Void(VoidLedgerEntry),
+    /// Voiding of an existing ledger entry has been initiated
+    #[serde(rename = "void_initiated")]
+    VoidInitiated(VoidInitiatedLedgerEntry),
+    // TODO: additional ledger entry types
+}
+
+/// The state of a ledger entry
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize_enum_str)]
+pub enum EntryStatus {
+    /// The entry has been committed to the ledger
+    #[serde(rename = "committed")]
+    Committed,
+    /// The entry hasn't yet been committed to the ledger
+    #[serde(rename = "pending")]
+    Pending,
+}
+
+/// A collection of identifiers for a customer
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CustomerIdentifier {
+    /// The Orb-assigned unique identifier for the customer.
+    pub id: String,
+    /// An optional user-defined ID for this customer resource, used throughout
+    /// the system as an alias for this customer.
+    pub external_customer_id: Option<String>,
+}
+
+/// Credit block data associated with entries in a ledger.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct LedgerEntryCreditBlock {
+    //// The Orb-assigned unique identifier for the credit block.
+    pub id: String,
+    /// The date on which the block's balance will expire.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub expiry_date: Option<OffsetDateTime>,
+    /// The price per credit.
+    pub per_unit_cost_basis: Option<String>,
+}
+
+/// Core ledger entry fields.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct BaseLedgerEntry {
+    /// The Orb-assigned unique identifier for the ledger entry.
+    pub id: String,
+    /// An incrementing identifier ordering the ledger entry relative to others.
+    pub ledger_sequence_number: u64,
+    /// The state of the ledger entry.
+    pub entry_status: EntryStatus,
+    /// The customer identifiers associated with the ledger entry.
+    pub customer: CustomerIdentifier,
+    /// The customer's credit balance before application of the ledger operation.
+    pub starting_balance: serde_json::Number,
+    /// The customer's credit balance after application of the ledger operation.
+    pub ending_balance: serde_json::Number,
+    /// The amount granted to the ledger.
+    pub amount: serde_json::Number,
+    /// The date the ledger entry was created.
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    /// An optional description to associate with the entry.
+    pub description: Option<String>,
+    /// The credit block the ledger entry is modifying.
+    pub credit_block: LedgerEntryCreditBlock,
+}
+
+/// A record of an ledger increment operation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct IncrementLedgerEntry {
+    /// The core ledger entry.
+    #[serde(flatten)]
+    pub ledger: BaseLedgerEntry,
+}
+
+/// A record of a ledger void operation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct VoidLedgerEntry {
+    /// The core ledger entry.
+    #[serde(flatten)]
+    pub ledger: BaseLedgerEntry,
+    /// The reason the ledger entry was voided.
+    pub void_reason: Option<String>,
+    /// The amount voided from the ledger.
+    pub void_amount: serde_json::Number,
+}
+
+/// A record of a ledger void initialization operation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct VoidInitiatedLedgerEntry {
+    /// The core ledger entry.
+    #[serde(flatten)]
+    pub ledger: BaseLedgerEntry,
+    /// The date on which the voided ledger's block will now expire.
+    #[serde(with = "time::serde::rfc3339")]
+    pub new_block_expiry_date: OffsetDateTime,
+    /// The reason the ledger entry was voided.
+    pub void_reason: Option<String>,
+    /// The amount voided from the ledger.
+    pub void_amount: serde_json::Number,
+}
+
 impl Client {
     /// Lists all customers.
     ///
@@ -332,5 +516,23 @@ impl Client {
         let req = self.build_request(Method::DELETE, CUSTOMERS_PATH.chain_one(id));
         let _: Empty = self.send_request(req).await?;
         Ok(())
+    }
+
+    /// Ceate a new ledger entry for the specified customer's balance.
+    pub async fn create_ledger_entry(
+        &self,
+        id: &str,
+        entry: &LedgerEntryRequest<'_>,
+    ) -> Result<LedgerEntry, Error> {
+        let req = self.build_request(
+            Method::POST,
+            CUSTOMERS_PATH
+                .chain_one(id)
+                .chain_one("credits")
+                .chain_one("ledger_entry"),
+        );
+        let req = req.json(entry);
+        let res = self.send_request(req).await?;
+        Ok(res)
     }
 }
