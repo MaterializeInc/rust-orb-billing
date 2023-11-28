@@ -9,7 +9,7 @@ categories = ["api-bindings", "web-programming"]
 keywords = ["orb", "billing", "api", "sdk"]
 repository = "https://github.com/MaterializeInc/rust-orb-billing"
 version = "0.6.0"
-rust-version = "1.67"
+rust-version = "1.70"
 edition = "2021"
 
 [dependencies]

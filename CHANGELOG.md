@@ -12,7 +12,7 @@ Versioning].
 * Add support for Plan metadata.
 * Add support for creating customer ledger entries.
 * Add support for enumerating customer credit balances.
-* Bump MSRV to 1.67.
+* Bump MSRV to 1.70.
 
 ## [0.6.0] - 2023-05-12
 
