@@ -43,8 +43,9 @@ mod serde;
 mod util;
 
 pub use client::customers::{
-    Address, AddressRequest, CreateCustomerRequest, Customer, CustomerId,
-    CustomerPaymentProviderRequest, PaymentProvider, UpdateCustomerRequest,
+    AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
+    AddressRequest, CreateCustomerRequest, Customer, CustomerId, CustomerPaymentProviderRequest,
+    LedgerEntry, LedgerEntryRequest, PaymentProvider, UpdateCustomerRequest, VoidReason,
 };
 pub use client::events::{
     AmendEventRequest, Event, EventPropertyValue, EventSearchParams, IngestEventDebugResponse,

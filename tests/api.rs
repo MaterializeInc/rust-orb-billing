@@ -40,11 +40,12 @@ use tokio::time::{self, Duration};
 use tracing::info;
 
 use orb_billing::{
-    Address, AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
+    AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
+    AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
     CreateSubscriptionRequest, Customer, CustomerId, CustomerPaymentProviderRequest, Error, Event,
     EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams,
-    ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
-    UpdateCustomerRequest,
+    LedgerEntry, LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId,
+    TaxIdRequest, UpdateCustomerRequest, VoidReason,
 };
 
 /// The API key to authenticate with.
@@ -153,6 +154,58 @@ async fn test_customers() {
     assert_eq!(customer.name, name);
     assert_eq!(customer.email, email);
 
+    // Test crediting customers and reading their balances back
+    let ledger_res = client
+        .create_ledger_entry(
+            &customer.id,
+            &LedgerEntryRequest::Increment(AddIncrementCreditLedgerEntryRequestParams {
+                amount: serde_json::Number::from(42),
+                description: Some("Test credit"),
+                expiry_date: None,
+                effective_date: None,
+                per_unit_cost_basis: None,
+                invoice_settings: None,
+            }),
+        )
+        .await
+        .unwrap();
+    let inc_res = match ledger_res {
+        LedgerEntry::Increment(inc_res) => inc_res,
+        entry => panic!("Expected an Increment, received: {:?}", entry),
+    };
+    assert_eq!(inc_res.ledger.customer.id, customer.id);
+    let balance: Vec<_> = client
+        .get_customer_credit_balance(&customer.id, &ListParams::default().page_size(1))
+        .try_collect()
+        .await
+        .unwrap();
+    assert_eq!(balance.get(0).unwrap().balance, inc_res.ledger.amount);
+    let ledger_res = client
+        .create_ledger_entry(
+            &customer.id,
+            &LedgerEntryRequest::Void(AddVoidCreditLedgerEntryRequestParams {
+                amount: inc_res.ledger.amount,
+                block_id: &inc_res.ledger.credit_block.id,
+                void_reason: Some(VoidReason::Refund),
+                description: None,
+            }),
+        )
+        .await
+        .unwrap();
+    let void_res = match ledger_res {
+        LedgerEntry::VoidInitiated(void_res) => void_res,
+        entry => panic!("Expected a VoidInitiated, received a {:?}", entry),
+    };
+    assert_eq!(void_res.ledger.customer.id, customer.id);
+    let balance: Vec<_> = client
+        .get_customer_credit_balance_by_external_id(
+            &customer.external_id.unwrap(),
+            &ListParams::default().page_size(1),
+        )
+        .try_collect()
+        .await
+        .unwrap();
+    assert!(balance.is_empty());
     // Test a second creation request with the same idempotency key does
     // *not* create a new instance
     let res = client
