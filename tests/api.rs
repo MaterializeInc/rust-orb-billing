@@ -41,11 +41,12 @@ use tracing::info;
 
 use orb_billing::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
-    CreateSubscriptionRequest, Customer, CustomerId, CustomerPaymentProviderRequest, Error, Event,
-    EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams,
-    LedgerEntry, LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId,
-    TaxIdRequest, UpdateCustomerRequest, VoidReason,
+    AddressRequest, AmendEventRequest, Client, ClientConfig, CostViewMode, CreateCustomerRequest,
+    CreateSubscriptionRequest, Customer, CustomerCostParams, CustomerCostPriceBlockPrice,
+    CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue,
+    EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry,
+    LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
+    UpdateCustomerRequest, VoidReason,
 };
 
 /// The API key to authenticate with.
@@ -65,6 +66,9 @@ const TEST_PREFIX: &str = "$TEST-RUST-API$";
 
 /// A `ListParams` that uses the maximum possible page size.
 const MAX_PAGE_LIST_PARAMS: ListParams = ListParams::DEFAULT.page_size(500);
+
+/// The number of retries to attempt for Orb endpoints with known latency
+const MAX_LIST_RETRIES: usize = 8;
 
 fn new_client() -> Client {
     Client::new(ClientConfig {
@@ -485,7 +489,7 @@ async fn test_events() {
 
     // Orb takes its time registering the amendment in the search output. Let's try a few times
     // before giving up.
-    for iteration in 0..5 {
+    for iteration in 1..=MAX_LIST_RETRIES {
         // Extremely sketchy sleep.
         time::sleep(Duration::from_secs(60)).await;
 
@@ -496,7 +500,7 @@ async fn test_events() {
             .unwrap();
         if events.get(0).map(|e| e.event_name.clone()) != Some("new test".into()) {
             info!("  events list not updated after {iteration} attempts.");
-            if iteration < 5 {
+            if iteration < MAX_LIST_RETRIES {
                 continue;
             }
         }
@@ -608,9 +612,15 @@ async fn test_subscriptions() {
         .try_collect()
         .await
         .unwrap();
-    // List returns subscriptions most recent first. Reverse to match ordering
-    // of subscriptions.
-    fetched_subscriptions.reverse();
+    fetched_subscriptions = fetched_subscriptions
+        .iter()
+        // List returns subscriptions most recent first. Reverse to match ordering
+        // of subscriptions.
+        .rev()
+        // Exclude any subscriptions added as part of cost validation.
+        .filter(|sub| sub.plan.external_id != Some("test-complex".into()))
+        .cloned()
+        .collect();
     assert_eq!(fetched_subscriptions, subscriptions);
 
     // Test that the list can be filtered to a single customer.
@@ -637,6 +647,65 @@ async fn test_invoices() {
 
     // TODO: validate list results.
     // TODO: test get_invoice.
+}
+
+#[test(tokio::test)]
+async fn test_customer_costs() {
+    let client = new_client();
+    delete_all_test_customers(&client).await;
+    let nonce = rand::thread_rng().gen::<u32>();
+    let customer = create_test_customer(&client, 0).await;
+    let idempotency_key = format!("test-subscription-{nonce}-0");
+    let subscription = client
+        .create_subscription(&CreateSubscriptionRequest {
+            customer_id: CustomerId::Orb(&customer.id),
+            plan_id: orb_billing::PlanId::External("test-complex"),
+            net_terms: None,
+            auto_collection: Some(true),
+            idempotency_key: Some(&idempotency_key),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(subscription.customer.id, customer.id);
+    assert_eq!(
+        subscription.plan.external_id.as_deref(),
+        Some("test-complex")
+    );
+    let costs = client
+        .get_customer_costs(
+            &customer.id,
+            &CustomerCostParams::default().view_mode(CostViewMode::Periodic),
+        )
+        .await
+        .unwrap();
+    assert_ne!(costs.len(), 0);
+    let cost_bucket = &costs[0];
+    assert!(cost_bucket.timeframe_start < cost_bucket.timeframe_end);
+    let (matrix_price, price_groups) = &cost_bucket
+        .per_price_costs
+        .iter()
+        .filter_map(|block| match &block.price {
+            CustomerCostPriceBlockPrice::Matrix(matrix_price) => {
+                Some((matrix_price, block.price_groups.clone().unwrap()))
+            }
+            _ => None,
+        })
+        .next()
+        .unwrap();
+    assert_eq!(matrix_price.matrix_config.default_unit_amount, "1.00");
+    assert_eq!(matrix_price.matrix_config.dimensions.len(), 2);
+    assert_eq!(
+        matrix_price.matrix_config.matrix_values[0].unit_amount,
+        "2.00"
+    );
+    assert_eq!(
+        vec![
+            price_groups[0].grouping_value.clone().unwrap(),
+            price_groups[0].secondary_grouping_value.clone().unwrap(),
+        ],
+        matrix_price.matrix_config.matrix_values[0].dimension_values
+    )
 }
 
 #[test(tokio::test)]
