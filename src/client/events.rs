@@ -189,13 +189,13 @@ impl<'a> EventSearchParams<'a> {
     }
 
     /// Filters the search to events falling on or after the specified datetime.
-    pub const fn timeframe_start(mut  self, start: OffsetDateTime) -> Self {
+    pub const fn timeframe_start(mut self, start: OffsetDateTime) -> Self {
         self.filter.timeframe_start = Some(start);
         self
     }
 
     /// Filters the search to events falling before the specified datetime.
-    pub const fn timeframe_end(mut  self, end: OffsetDateTime) -> Self {
+    pub const fn timeframe_end(mut self, end: OffsetDateTime) -> Self {
         self.filter.timeframe_end = Some(end);
         self
     }

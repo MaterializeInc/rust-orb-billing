@@ -27,6 +27,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fmt;
+use std::ops::Add;
 
 use ::time::{OffsetDateTime, Time};
 use codes_iso_3166::part_1::CountryCode;
@@ -345,11 +346,15 @@ async fn test_events() {
         let id = format!("event-{nonce}-{i}");
         let time = Time::from_hms(i, 0, 0).unwrap();
         let timestamp = OffsetDateTime::now_utc().replace_time(time);
+        // Make all events happen tomorrow to avoid falling outside of the account's grace
+        // period.
         let timestamp =
             timestamp.replace_date(timestamp.date().next_day().expect("Y10K problem detected"));
         ids.push(id);
         timestamps.push(timestamp);
     }
+    // `timeframe_end` is an exclusive endpoint, so add a second to ensure all events are captured.
+    let timeframe_end = timestamps.last().unwrap().add(Duration::from_secs(1));
 
     // Test that ingesting two new events results in Orb accepting both of them.
     let events = client
@@ -434,7 +439,11 @@ async fn test_events() {
 
     // Test that all ingested events are reported in search results.
     let events: Vec<_> = client
-        .search_events(&EventSearchParams::default().event_ids(&[&ids[0], &ids[1], &ids[2]]))
+        .search_events(
+            &EventSearchParams::default()
+                .event_ids(&[&ids[0], &ids[1], &ids[2]])
+                .timeframe_end(timeframe_end),
+        )
         .try_collect()
         .await
         .unwrap();
@@ -444,8 +453,7 @@ async fn test_events() {
             Event {
                 id: ids[0].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[0],
@@ -453,8 +461,7 @@ async fn test_events() {
             Event {
                 id: ids[1].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[1],
@@ -462,8 +469,7 @@ async fn test_events() {
             Event {
                 id: ids[2].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[2],
@@ -494,7 +500,11 @@ async fn test_events() {
         time::sleep(Duration::from_secs(60)).await;
 
         let events: Vec<_> = client
-            .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+            .search_events(
+                &EventSearchParams::default()
+                    .event_ids(&[&ids[0]])
+                    .timeframe_end(timeframe_end),
+            )
             .try_collect()
             .await
             .unwrap();
@@ -509,8 +519,7 @@ async fn test_events() {
             vec![Event {
                 id: ids[0].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "new test".into(),
                 properties: properties.clone(),
                 timestamp: timestamps[0],
@@ -523,7 +532,11 @@ async fn test_events() {
     // Test that deprecating an event removes it from search results.
     client.deprecate_event(&ids[0]).await.unwrap();
     let events: Vec<_> = client
-        .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+        .search_events(
+            &EventSearchParams::default()
+                .event_ids(&[&ids[0]])
+                .timeframe_end(timeframe_end),
+        )
         .try_collect()
         .await
         .unwrap();
