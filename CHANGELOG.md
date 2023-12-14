@@ -13,6 +13,7 @@ Versioning].
 * Add support for creating customer ledger entries.
 * Add support for enumerating customer credit balances.
 * Add support for fetching customer costs.
+* Add support for filtering by timeframe in `Client::search_events`.
 * Bump MSRV to 1.70.
 
 ## [0.6.0] - 2023-05-12

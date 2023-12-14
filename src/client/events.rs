@@ -133,6 +133,12 @@ struct EventFilter<'a> {
     event_ids: Option<&'a [&'a str]>,
     #[serde(skip_serializing_if = "Option::is_none")]
     invoice_id: Option<&'a str>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    timeframe_start: Option<OffsetDateTime>,
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    timeframe_end: Option<OffsetDateTime>,
 }
 
 /// Parameters for an event search operation.
@@ -157,6 +163,8 @@ impl<'a> EventSearchParams<'a> {
         filter: EventFilter {
             event_ids: None,
             invoice_id: None,
+            timeframe_start: None,
+            timeframe_end: None,
         },
     };
 
@@ -177,6 +185,18 @@ impl<'a> EventSearchParams<'a> {
     /// Filters the search to the specified invoice ID.
     pub const fn invoice_id(mut self, filter: &'a str) -> Self {
         self.filter.invoice_id = Some(filter);
+        self
+    }
+
+    /// Filters the search to events falling on or after the specified datetime.
+    pub const fn timeframe_start(mut  self, start: OffsetDateTime) -> Self {
+        self.filter.timeframe_start = Some(start);
+        self
+    }
+
+    /// Filters the search to events falling before the specified datetime.
+    pub const fn timeframe_end(mut  self, end: OffsetDateTime) -> Self {
+        self.filter.timeframe_end = Some(end);
         self
     }
 }
