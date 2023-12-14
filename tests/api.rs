@@ -620,6 +620,7 @@ async fn test_subscriptions() {
     }
 
     // Test that listing subscriptions returns all subscriptions.
+    let first_subscription = subscriptions[0].created_at;
     let mut fetched_subscriptions: Vec<_> = client
         .list_subscriptions(&SubscriptionListParams::default())
         .try_collect()
@@ -632,6 +633,10 @@ async fn test_subscriptions() {
         .rev()
         // Exclude any subscriptions added as part of cost validation.
         .filter(|sub| sub.plan.external_id != Some("test-complex".into()))
+        // Sometimes the tests don't clean up subscriptions from previous runs. Ensure we're only
+        // querying subscriptions created within this run by constraining ourselves to those
+        // falling on or after the first one was created.
+        .filter(|sub| sub.created_at >= first_subscription)
         .cloned()
         .collect();
     assert_eq!(fetched_subscriptions, subscriptions);
