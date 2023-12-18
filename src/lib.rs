@@ -44,8 +44,14 @@ mod util;
 
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, CreateCustomerRequest, Customer, CustomerId, CustomerPaymentProviderRequest,
-    LedgerEntry, LedgerEntryRequest, PaymentProvider, UpdateCustomerRequest, VoidReason,
+    AddressRequest, CostViewMode, CreateCustomerRequest, Customer, CustomerCostBucket,
+    CustomerCostItem, CustomerCostParams, CustomerCostPriceBlock,
+    CustomerCostPriceBlockMatrixPrice, CustomerCostPriceBlockMatrixPriceConfig,
+    CustomerCostPriceBlockMatrixPriceValue, CustomerCostPriceBlockPrice,
+    CustomerCostPriceBlockPriceGroup, CustomerCostPriceBlockUnitPrice,
+    CustomerCostPriceBlockUnitPriceConfig, CustomerCreditBlock, CustomerId,
+    CustomerPaymentProviderRequest, LedgerEntry, LedgerEntryRequest, PaymentProvider,
+    UpdateCustomerRequest, VoidReason,
 };
 pub use client::events::{
     AmendEventRequest, Event, EventPropertyValue, EventSearchParams, IngestEventDebugResponse,

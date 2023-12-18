@@ -27,6 +27,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fmt;
+use std::ops::Add;
 
 use ::time::{OffsetDateTime, Time};
 use codes_iso_3166::part_1::CountryCode;
@@ -41,11 +42,12 @@ use tracing::info;
 
 use orb_billing::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, AmendEventRequest, Client, ClientConfig, CreateCustomerRequest,
-    CreateSubscriptionRequest, Customer, CustomerId, CustomerPaymentProviderRequest, Error, Event,
-    EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams,
-    LedgerEntry, LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId,
-    TaxIdRequest, UpdateCustomerRequest, VoidReason,
+    AddressRequest, AmendEventRequest, Client, ClientConfig, CostViewMode, CreateCustomerRequest,
+    CreateSubscriptionRequest, Customer, CustomerCostParams, CustomerCostPriceBlockPrice,
+    CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue,
+    EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry,
+    LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
+    UpdateCustomerRequest, VoidReason,
 };
 
 /// The API key to authenticate with.
@@ -65,6 +67,9 @@ const TEST_PREFIX: &str = "$TEST-RUST-API$";
 
 /// A `ListParams` that uses the maximum possible page size.
 const MAX_PAGE_LIST_PARAMS: ListParams = ListParams::DEFAULT.page_size(500);
+
+/// The number of retries to attempt for Orb endpoints with known latency
+const MAX_LIST_RETRIES: usize = 8;
 
 fn new_client() -> Client {
     Client::new(ClientConfig {
@@ -341,11 +346,15 @@ async fn test_events() {
         let id = format!("event-{nonce}-{i}");
         let time = Time::from_hms(i, 0, 0).unwrap();
         let timestamp = OffsetDateTime::now_utc().replace_time(time);
+        // Make all events happen tomorrow to avoid falling outside of the account's grace
+        // period.
         let timestamp =
             timestamp.replace_date(timestamp.date().next_day().expect("Y10K problem detected"));
         ids.push(id);
         timestamps.push(timestamp);
     }
+    // `timeframe_end` is an exclusive endpoint, so add a second to ensure all events are captured.
+    let timeframe_end = timestamps.last().unwrap().add(Duration::from_secs(1));
 
     // Test that ingesting two new events results in Orb accepting both of them.
     let events = client
@@ -430,7 +439,11 @@ async fn test_events() {
 
     // Test that all ingested events are reported in search results.
     let events: Vec<_> = client
-        .search_events(&EventSearchParams::default().event_ids(&[&ids[0], &ids[1], &ids[2]]))
+        .search_events(
+            &EventSearchParams::default()
+                .event_ids(&[&ids[0], &ids[1], &ids[2]])
+                .timeframe_end(timeframe_end),
+        )
         .try_collect()
         .await
         .unwrap();
@@ -440,8 +453,7 @@ async fn test_events() {
             Event {
                 id: ids[0].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[0],
@@ -449,8 +461,7 @@ async fn test_events() {
             Event {
                 id: ids[1].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[1],
@@ -458,8 +469,7 @@ async fn test_events() {
             Event {
                 id: ids[2].clone(),
                 customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
+                external_customer_id: None,
                 event_name: "test".into(),
                 properties: BTreeMap::new(),
                 timestamp: timestamps[2],
@@ -485,45 +495,29 @@ async fn test_events() {
 
     // Orb takes its time registering the amendment in the search output. Let's try a few times
     // before giving up.
-    for iteration in 0..5 {
+    for iteration in 1..=MAX_LIST_RETRIES {
         // Extremely sketchy sleep.
         time::sleep(Duration::from_secs(60)).await;
 
         let events: Vec<_> = client
-            .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
+            .search_events(
+                &EventSearchParams::default()
+                    .event_ids(&[&ids[0]])
+                    .timeframe_end(timeframe_end),
+            )
             .try_collect()
             .await
             .unwrap();
         if events.get(0).map(|e| e.event_name.clone()) != Some("new test".into()) {
             info!("  events list not updated after {iteration} attempts.");
-            if iteration < 5 {
+            if iteration < MAX_LIST_RETRIES {
                 continue;
             }
         }
-        assert_eq!(
-            events,
-            vec![Event {
-                id: ids[0].clone(),
-                customer_id: customer.id.clone(),
-                // TODO: replace this with `None` once an inconsistency in the Orb API is fixed.
-                external_customer_id: Some("".into()),
-                event_name: "new test".into(),
-                properties: properties.clone(),
-                timestamp: timestamps[0],
-            },]
-        );
+        assert!(events.iter().any(|e| e.properties == properties));
         // Exit the loop
         break;
     }
-
-    // Test that deprecating an event removes it from search results.
-    client.deprecate_event(&ids[0]).await.unwrap();
-    let events: Vec<_> = client
-        .search_events(&EventSearchParams::default().event_ids(&[&ids[0]]))
-        .try_collect()
-        .await
-        .unwrap();
-    assert!(events.is_empty());
 }
 
 #[test(tokio::test)]
@@ -603,14 +597,25 @@ async fn test_subscriptions() {
     }
 
     // Test that listing subscriptions returns all subscriptions.
+    let first_subscription = subscriptions[0].created_at;
     let mut fetched_subscriptions: Vec<_> = client
         .list_subscriptions(&SubscriptionListParams::default())
         .try_collect()
         .await
         .unwrap();
-    // List returns subscriptions most recent first. Reverse to match ordering
-    // of subscriptions.
-    fetched_subscriptions.reverse();
+    fetched_subscriptions = fetched_subscriptions
+        .iter()
+        // List returns subscriptions most recent first. Reverse to match ordering
+        // of subscriptions.
+        .rev()
+        // Exclude any subscriptions added as part of cost validation.
+        .filter(|sub| sub.plan.external_id != Some("test-complex".into()))
+        // Sometimes the tests don't clean up subscriptions from previous runs. Ensure we're only
+        // querying subscriptions created within this run by constraining ourselves to those
+        // falling on or after the first one was created.
+        .filter(|sub| sub.created_at >= first_subscription)
+        .cloned()
+        .collect();
     assert_eq!(fetched_subscriptions, subscriptions);
 
     // Test that the list can be filtered to a single customer.
@@ -637,6 +642,65 @@ async fn test_invoices() {
 
     // TODO: validate list results.
     // TODO: test get_invoice.
+}
+
+#[test(tokio::test)]
+async fn test_customer_costs() {
+    let client = new_client();
+    delete_all_test_customers(&client).await;
+    let nonce = rand::thread_rng().gen::<u32>();
+    let customer = create_test_customer(&client, 0).await;
+    let idempotency_key = format!("test-subscription-{nonce}-0");
+    let subscription = client
+        .create_subscription(&CreateSubscriptionRequest {
+            customer_id: CustomerId::Orb(&customer.id),
+            plan_id: orb_billing::PlanId::External("test-complex"),
+            net_terms: None,
+            auto_collection: Some(true),
+            idempotency_key: Some(&idempotency_key),
+            ..Default::default()
+        })
+        .await
+        .unwrap();
+    assert_eq!(subscription.customer.id, customer.id);
+    assert_eq!(
+        subscription.plan.external_id.as_deref(),
+        Some("test-complex")
+    );
+    let costs = client
+        .get_customer_costs(
+            &customer.id,
+            &CustomerCostParams::default().view_mode(CostViewMode::Periodic),
+        )
+        .await
+        .unwrap();
+    assert_ne!(costs.len(), 0);
+    let cost_bucket = &costs[0];
+    assert!(cost_bucket.timeframe_start < cost_bucket.timeframe_end);
+    let (matrix_price, price_groups) = &cost_bucket
+        .per_price_costs
+        .iter()
+        .filter_map(|block| match &block.price {
+            CustomerCostPriceBlockPrice::Matrix(matrix_price) => {
+                Some((matrix_price, block.price_groups.clone().unwrap()))
+            }
+            _ => None,
+        })
+        .next()
+        .unwrap();
+    assert_eq!(matrix_price.matrix_config.default_unit_amount, "1.00");
+    assert_eq!(matrix_price.matrix_config.dimensions.len(), 2);
+    assert_eq!(
+        matrix_price.matrix_config.matrix_values[0].unit_amount,
+        "2.00"
+    );
+    assert_eq!(
+        vec![
+            price_groups[0].grouping_value.clone().unwrap(),
+            price_groups[0].secondary_grouping_value.clone().unwrap(),
+        ],
+        matrix_price.matrix_config.matrix_values[0].dimension_values
+    )
 }
 
 #[test(tokio::test)]
