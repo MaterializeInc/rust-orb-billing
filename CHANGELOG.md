@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.7.0] - 2023-12-18
+
 * Add support for Plan metadata.
 * Add support for creating customer ledger entries.
 * Add support for enumerating customer credit balances.
@@ -49,7 +51,8 @@ Versioning].
 Initial release.
 
 <!-- #release:next-url -->
-[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.3.0...v0.4.0
