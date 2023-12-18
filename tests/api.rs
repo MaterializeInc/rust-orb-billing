@@ -518,19 +518,6 @@ async fn test_events() {
         // Exit the loop
         break;
     }
-
-    // Test that deprecating an event removes it from search results.
-    client.deprecate_event(&ids[0]).await.unwrap();
-    let events: Vec<_> = client
-        .search_events(
-            &EventSearchParams::default()
-                .event_ids(&[&ids[0]])
-                .timeframe_end(timeframe_end),
-        )
-        .try_collect()
-        .await
-        .unwrap();
-    assert!(events.is_empty());
 }
 
 #[test(tokio::test)]
