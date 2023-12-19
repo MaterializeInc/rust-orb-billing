@@ -27,7 +27,7 @@
 use std::collections::{BTreeMap, HashSet};
 use std::env;
 use std::fmt;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 
 use ::time::{OffsetDateTime, Time};
 use codes_iso_3166::part_1::CountryCode;
@@ -700,7 +700,20 @@ async fn test_customer_costs() {
             price_groups[0].secondary_grouping_value.clone().unwrap(),
         ],
         matrix_price.matrix_config.matrix_values[0].dimension_values
-    )
+    );
+    let now = OffsetDateTime::now_utc();
+    let then = now.sub(Duration::from_secs(60 * 60 * 24));
+    let costs = client
+        .get_customer_costs(
+            &customer.id,
+            &CustomerCostParams::default()
+                .view_mode(CostViewMode::Periodic)
+                .timeframe_end(&now)
+                .timeframe_start(&then),
+        )
+        .await
+        .unwrap();
+    assert_eq!(costs.len(), 1);
 }
 
 #[test(tokio::test)]
