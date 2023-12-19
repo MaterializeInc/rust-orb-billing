@@ -476,7 +476,7 @@ impl Filterable<CustomerCostParamsFilter<'_>> for RequestBuilder {
             self = self.query(&[("timeframe_start", timeframe_start.format(&Rfc3339).unwrap())]);
         }
         if let Some(timeframe_end) = &filter.timeframe_end {
-            self = self.query(&[("timeframe_start", timeframe_end.format(&Rfc3339).unwrap())]);
+            self = self.query(&[("timeframe_end", timeframe_end.format(&Rfc3339).unwrap())]);
         }
         self
     }

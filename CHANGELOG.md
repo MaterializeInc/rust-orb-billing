@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Fix bug preventing customer costs from being filtered by `timeframe_start`.
+
 ## [0.7.0] - 2023-12-18
 
 * Add support for Plan metadata.
