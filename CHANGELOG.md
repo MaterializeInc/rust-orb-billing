@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.7.1] - 2023-12-19
+
 * Fix bug preventing customer costs from being filtered by `timeframe_start`.
 
 ## [0.7.0] - 2023-12-18
@@ -53,7 +55,8 @@ Versioning].
 Initial release.
 
 <!-- #release:next-url -->
-[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.0...HEAD
+[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.1...HEAD
+[0.7.1]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.6.0...v0.7.0
 [0.6.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.4.0...v0.5.0
