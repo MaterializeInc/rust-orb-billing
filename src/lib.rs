@@ -68,4 +68,4 @@ pub use client::subscriptions::{
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;
 pub use config::{ClientBuilder, ClientConfig, ListParams};
-pub use error::Error;
+pub use error::{ApiError, Error};

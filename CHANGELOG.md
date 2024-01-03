@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Export the Orb `ApiError` struct.
+
 ## [0.7.1] - 2023-12-19
 
 * Fix bug preventing customer costs from being filtered by `timeframe_start`.
