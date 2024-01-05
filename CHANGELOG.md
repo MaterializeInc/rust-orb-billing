@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.8.0] - 2024-01-05
+
 * Add `base_plan_id` to `Plan`.
 
 ## [0.7.2] - 2024-01-03
@@ -61,7 +63,8 @@ Versioning].
 Initial release.
 
 <!-- #release:next-url -->
-[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.2...HEAD
+[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.8.0...HEAD
+[0.8.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.1...v0.7.2
 [0.7.1]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.0...v0.7.1
 [0.7.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.6.0...v0.7.0
