@@ -534,6 +534,7 @@ async fn test_plans() {
     // TODO: validate list results.
     // TODO: test get_plan.
     // TODO: test get_plan_by_external_id.
+    // TODO: test get_plan w/nested plans?
     // Testing the above will be hard as there is no API to create plans.
 }
 

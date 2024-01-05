@@ -61,7 +61,7 @@ pub use client::invoices::{
     Invoice, InvoiceCustomer, InvoiceListParams, InvoiceStatusFilter, InvoiceSubscription,
 };
 pub use client::marketplaces::ExternalMarketplace;
-pub use client::plans::PlanId;
+pub use client::plans::{Plan, PlanId};
 pub use client::subscriptions::{
     CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus,
 };

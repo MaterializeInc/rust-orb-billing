@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add `base_plan_id` to `Plan`.
+
 ## [0.7.2] - 2024-01-03
 
 * Export the Orb `ApiError` struct.

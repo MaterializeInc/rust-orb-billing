@@ -60,6 +60,9 @@ pub struct Plan {
     /// The time at which the plan was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// The parent plan id if the given plan was created by overriding one or more of the parent's
+    /// prices.
+    pub base_plan_id: Option<String>,
     /// Arbitrary metadata that is attached to the plan. Cannot be nested, must have string values.
     #[serde(default)]
     pub metadata: BTreeMap<String, String>,
