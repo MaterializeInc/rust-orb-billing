@@ -697,8 +697,8 @@ async fn test_customer_costs() {
     );
     assert_eq!(
         vec![
-            price_groups[0].grouping_value.clone().unwrap(),
-            price_groups[0].secondary_grouping_value.clone().unwrap(),
+            price_groups[0].grouping_value.clone(),
+            price_groups[0].secondary_grouping_value.clone(),
         ],
         matrix_price.matrix_config.matrix_values[0].dimension_values
     );
