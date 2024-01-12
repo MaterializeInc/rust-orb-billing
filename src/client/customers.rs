@@ -606,7 +606,7 @@ pub struct CustomerCostPriceBlockMatrixPriceConfig {
     /// The fallback unit amount.
     pub default_unit_amount: String,
     /// A collection of dimensions modeled by the matrix.
-    pub dimensions: Vec<String>,
+    pub dimensions: Vec<Option<String>>,
     /// All pricing values configured for the matrix.
     pub matrix_values: Vec<CustomerCostPriceBlockMatrixPriceValue>,
 }
@@ -615,7 +615,7 @@ pub struct CustomerCostPriceBlockMatrixPriceConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CustomerCostPriceBlockMatrixPriceValue {
     /// The dimensions corresponding to this cell.
-    pub dimension_values: Vec<String>,
+    pub dimension_values: Vec<Option<String>>,
     /// The per-unit amount usage within this cell bills.
     pub unit_amount: String,
 }

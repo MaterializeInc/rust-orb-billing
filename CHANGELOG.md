@@ -9,6 +9,9 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Fix bug causing deserialization errors when `get_customer_costs` responses
+  contained null price dimension values.
+
 ## [0.8.0] - 2024-01-05
 
 * Add `base_plan_id` to `Plan`.
