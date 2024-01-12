@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Support `additional_emails` field on `Customer`.
+
 ## [0.8.1] - 2024-01-12
 
 * Fix bug causing deserialization errors when `get_customer_costs` responses
