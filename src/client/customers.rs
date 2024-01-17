@@ -66,6 +66,9 @@ pub struct CreateCustomerRequest<'a> {
     pub name: &'a str,
     /// A valid email for the customer, to be used for notifications.
     pub email: &'a str,
+    /// Additional email addresses for this customer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub additional_emails: Option<Vec<&'a str>>,
     /// The customer's timezone as an identifier from the IANA timezone
     /// database.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -102,6 +105,9 @@ pub struct UpdateCustomerRequest<'a> {
     /// A valid email for the customer, to be used for notifications.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub email: Option<&'a str>,
+    /// Additional email addresses for this customer.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub additional_emails: Option<Vec<&'a str>>,
     /// The external payments or invoicing solution connected to the customer.
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(flatten)]
@@ -152,6 +158,8 @@ pub struct Customer {
     pub name: String,
     /// A valid email for the customer, to be used for notifications.
     pub email: String,
+    /// Additional email addresses for this customer.
+    pub additional_emails: Vec<String>,
     /// The customer's timezone as an identifier from the IANA timezone
     /// database.
     pub timezone: String,
