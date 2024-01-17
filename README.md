@@ -7,9 +7,9 @@ An async Rust API client for the [Orb] billing platform.
 ```
 # Cargo.toml
 [dependencies]
-orb-billing = "0.8.1"
+orb-billing = "0.9.0"
 ```
 
-**[View documentation.](https://docs.rs/orb-billing/0.8.1)**
+**[View documentation.](https://docs.rs/orb-billing/0.9.0)**
 
 [Orb]: https://withorb.com

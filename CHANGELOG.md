@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+## [0.9.0] - 2024-01-17
+
 * Support `additional_emails` field on `Customer`.
 
 ## [0.8.1] - 2024-01-12
@@ -70,7 +72,8 @@ Versioning].
 Initial release.
 
 <!-- #release:next-url -->
-[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.8.1...HEAD
+[Unreleased]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.9.0...HEAD
+[0.9.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.8.1...v0.9.0
 [0.8.1]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.8.0...v0.8.1
 [0.8.0]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.2...v0.8.0
 [0.7.2]: https://github.com/MaterializeInc/rust-orb-billing/compare/v0.7.1...v0.7.2
