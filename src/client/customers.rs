@@ -21,7 +21,7 @@ use reqwest::{Method, RequestBuilder};
 use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
 use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 
 use crate::client::taxes::{TaxId, TaxIdRequest};
 use crate::client::Client;
@@ -481,10 +481,24 @@ impl Filterable<CustomerCostParamsFilter<'_>> for RequestBuilder {
             self = self.query(&[("group_by", group_by)]);
         }
         if let Some(timeframe_start) = &filter.timeframe_start {
-            self = self.query(&[("timeframe_start", timeframe_start.format(&Rfc3339).unwrap())]);
+            self = self.query(&[(
+                "timeframe_start",
+                timeframe_start
+                    // Orb requires supplied datetimes be in UTC
+                    .to_offset(UtcOffset::UTC)
+                    .format(&Rfc3339)
+                    .unwrap(),
+            )]);
         }
         if let Some(timeframe_end) = &filter.timeframe_end {
-            self = self.query(&[("timeframe_end", timeframe_end.format(&Rfc3339).unwrap())]);
+            self = self.query(&[(
+                "timeframe_end",
+                timeframe_end
+                    // Orb requires supplied datetimes be in UTC
+                    .to_offset(UtcOffset::UTC)
+                    .format(&Rfc3339)
+                    .unwrap(),
+            )]);
         }
         self
     }
