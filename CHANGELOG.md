@@ -9,6 +9,9 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add `invoice_number`, `currency`, `issued_at`, and `metadata` fields to the
+  `Invoice`.
+
 ## [0.9.0] - 2024-01-17
 
 * Support `additional_emails` field on `Customer`.

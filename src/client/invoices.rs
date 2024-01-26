@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use std::collections::BTreeMap;
+
 use futures_core::Stream;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
@@ -38,8 +40,12 @@ pub struct Invoice {
     /// The issue date of the invoice.
     #[serde(with = "time::serde::rfc3339")]
     pub invoice_date: OffsetDateTime,
+    /// An automatically generated number to help track and reconcile invoices.
+    pub invoice_number: String,
     /// The link to download the PDF representation of the invoice.
     pub invoice_pdf: Option<String>,
+    /// An ISO 4217 currency string, or "credits"
+    pub currency: String,
     /// The total after any minimums, discounts, and taxes have been applied.
     pub total: String,
     /// This is the final amount required to be charged to the
@@ -49,10 +55,17 @@ pub struct Invoice {
     /// The time at which the invoice was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// The time at which the invoice was issued.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub issued_at: Option<OffsetDateTime>,
     /// The link to the hosted invoice
     pub hosted_invoice_url: Option<String>,
     /// The status (see [`InvoiceStatusFilter`] for details)
     pub status: String,
+    /// Arbitrary metadata that is attached to the invoice. Cannot be nested, must have string
+    /// values.
+    #[serde(default)]
+    pub metadata: BTreeMap<String, String>,
     // TODO: many missing fields.
 }
 
