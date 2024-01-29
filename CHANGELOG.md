@@ -9,6 +9,11 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add `invoice_number`, `currency`, `issued_at`, and `metadata` fields to the
+  `Invoice`.
+* Fix issue where `get_customer_costs` queries would fail when provided
+  timeframe filters with non-UTC offsets.
+
 ## [0.9.0] - 2024-01-17
 
 * Support `additional_emails` field on `Customer`.
