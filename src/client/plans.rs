@@ -66,6 +66,18 @@ pub struct Plan {
     /// Arbitrary metadata that is attached to the plan. Cannot be nested, must have string values.
     #[serde(default)]
     pub metadata: BTreeMap<String, String>,
+    /// One of active, archived, draft
+    pub status: String,
+    /// Prices for this plan
+    pub prices: Vec<Price>,
+    // TODO: many missing fields.
+}
+
+/// An Orb price
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct Price {
+    pub id: String,
+    pub name: String,
     // TODO: many missing fields.
 }
 
