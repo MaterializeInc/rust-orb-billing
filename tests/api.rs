@@ -604,7 +604,7 @@ async fn test_subscriptions() {
             Some(&"test".to_string())
         );
         assert_eq!(subscription.net_terms, 3);
-        assert!(subscription.auto_collection);
+        assert_eq!(subscription.auto_collection, Some(true));
 
         // A second creation request tests that the idempotency key is serving
         // its purpose!
