@@ -166,8 +166,8 @@ pub struct SubscriptionFixedFee {
     #[serde(with = "time::serde::rfc3339")]
     pub start_date: OffsetDateTime,
     /// The date at which the fixed fee ends.
-    #[serde(with = "time::serde::rfc3339")]
-    pub end_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub end_date: Option<OffsetDateTime>,
     /// The price ID for the fixed fee.
     pub price_id: String,
     /// The quantity of the fixed fee.
