@@ -109,7 +109,7 @@ pub struct Subscription<C = Customer> {
     #[serde(with = "time::serde::rfc3339::option")]
     pub end_date: Option<OffsetDateTime>,
     /// The status of the subscription.
-    pub status: Option<SubscriptionStatus>,
+    pub status: SubscriptionStatus,
     /// The start of the current billing period if the subscription is currently
     /// active.
     #[serde(with = "time::serde::rfc3339::option")]
@@ -133,11 +133,11 @@ pub struct Subscription<C = Customer> {
     /// automatically be charged with the saved payment method on the due date.
     ///
     /// If `None`, the value is determined by the plan configuration.
-    pub auto_collection: bool,
+    pub auto_collection: Option<bool>,
     /// Determines the default memo on this subscription's invoices.
     ///
     /// If `None`, the value is determined by the plan configuration.
-    pub default_invoice_memo: String,
+    pub default_invoice_memo: Option<String>,
     /// The time at which the subscription was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
