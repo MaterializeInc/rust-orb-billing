@@ -28,6 +28,7 @@ pub mod events;
 pub mod invoices;
 pub mod marketplaces;
 pub mod plans;
+pub mod prices;
 pub mod subscriptions;
 pub mod taxes;
 

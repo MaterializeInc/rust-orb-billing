@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
 use time::OffsetDateTime;
 
+use crate::PriceOverride;
 use crate::client::customers::{Customer, CustomerId, CustomerResponse};
 use crate::client::marketplaces::ExternalMarketplace;
 use crate::client::plans::{Plan, PlanId};
@@ -81,6 +82,9 @@ pub struct CreateSubscriptionRequest<'a> {
     // NOTE: this is passed in a request header, not the body
     #[serde(skip_serializing)]
     pub idempotency_key: Option<&'a str>,
+    /// Optionally provide a list of overrides for prices on the plan
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price_overrides: Option<Vec<PriceOverride>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
