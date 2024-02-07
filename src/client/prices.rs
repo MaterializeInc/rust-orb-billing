@@ -49,6 +49,7 @@ pub enum PriceOverride {
     // TODO: Add support for additional price overrides
 }
 
+/// Price override for a unit price
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct OverrideUnitPrice {
     /// Id of the price
@@ -57,6 +58,7 @@ pub struct OverrideUnitPrice {
     pub model_type: String,
     /// The starting quantity of the price
     pub fixed_price_quantity: Option<serde_json::Number>,
+    /// Configuration for a unit price
     pub unit_config: UnitConfig,
 }
 
