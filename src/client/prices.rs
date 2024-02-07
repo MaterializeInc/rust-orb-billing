@@ -13,6 +13,7 @@ pub enum Price {
     // TODO: Add support for additional prices
 }
 
+/// With unit pricing, each unit costs a fixed amount.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct UnitPrice {
     /// Id of the price
@@ -24,6 +25,8 @@ pub struct UnitPrice {
     // TODO: many missing fields.
 }
 
+/// In tiered pricing, the cost of a given unit depends on the tier range that it
+/// falls into, where each tier range is defined by an upper and lower bound.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct TieredPrice {
     /// Id of the price
