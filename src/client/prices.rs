@@ -21,7 +21,7 @@ pub struct UnitPrice {
     /// Name of the price
     pub name: String,
     /// Config with rates per unit
-    unit_config: UnitConfig,
+    pub unit_config: UnitConfig,
     // TODO: many missing fields.
 }
 
@@ -34,7 +34,7 @@ pub struct TieredPrice {
     /// Name of the price
     pub name: String,
     /// Config with rates per tier
-    tiered_config: TieredConfig,
+    pub tiered_config: TieredConfig,
     // TODO: many missing fields.
 }
 
