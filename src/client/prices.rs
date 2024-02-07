@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 
 /// An Orb price
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(tag = "model_type")]
 pub enum Price {
     /// Used to represent unit prices
     #[serde(rename = "unit")]
@@ -37,6 +38,7 @@ pub struct TieredPrice {
 
 /// Price overrides are used to update some or all prices in a plan for the specific subscription being created.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(tag = "model_type")]
 pub enum PriceOverride {
     /// Used to override unit prices
     #[serde(rename = "unit")]
