@@ -53,7 +53,7 @@ pub struct OverrideUnitPrice {
     /// Will be "unit" for this type of price override
     pub model_type: String,
     /// The starting quantity of the price
-    pub fixed_price_quantity: Option<u64>,
+    pub fixed_price_quantity: Option<serde_json::Number>,
     pub unit_config: UnitConfig,
 }
 
@@ -63,7 +63,7 @@ pub struct UnitConfig {
     pub unit_amount: String,
     /// Multiplier to scale rated quantity by
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub scaling_factor: Option<u64>,
+    pub scaling_factor: Option<serde_json::Number>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -75,10 +75,10 @@ pub struct TieredConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Tier {
     /// Inclusive tier starting value
-    pub first_unit: u64,
+    pub first_unit: serde_json::Number,
     /// Exclusive tier ending value. If null, this is treated as the last tier
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub last_unit: Option<u64>,
+    pub last_unit: Option<serde_json::Number>,
     /// Rate per unit of usage
     pub unit_amount: String,
 }
