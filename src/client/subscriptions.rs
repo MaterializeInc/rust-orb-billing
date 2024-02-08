@@ -196,7 +196,8 @@ pub struct SubscriptionFixedFee {
 #[derive(Debug, Clone)]
 pub struct SubscriptionListParams<'a> {
     inner: ListParams,
-    filter: Option<CustomerId<'a>>,
+    customer_id_filter: Option<CustomerId<'a>>,
+    status_filter: Option<&'a str>,
 }
 
 impl<'a> Default for SubscriptionListParams<'a> {
@@ -211,7 +212,8 @@ impl<'a> SubscriptionListParams<'a> {
     /// Exposed as a constant for use in constant evaluation contexts.
     pub const DEFAULT: SubscriptionListParams<'static> = SubscriptionListParams {
         inner: ListParams::DEFAULT,
-        filter: None,
+        customer_id_filter: None,
+        status_filter: None,
     };
 
     /// Sets the page size for the list operation.
@@ -224,7 +226,13 @@ impl<'a> SubscriptionListParams<'a> {
 
     /// Filters the listing to the specified customer ID.
     pub const fn customer_id(mut self, filter: CustomerId<'a>) -> Self {
-        self.filter = Some(filter);
+        self.customer_id_filter = Some(filter);
+        self
+    }
+
+    /// Filters the listing by status
+    pub const fn status(mut self, filter: &'a str) -> Self {
+        self.status_filter = Some(filter);
         self
     }
 }
@@ -239,10 +247,14 @@ impl Client {
         params: &SubscriptionListParams,
     ) -> impl Stream<Item = Result<Subscription, Error>> + '_ {
         let req = self.build_request(Method::GET, SUBSCRIPTIONS_PATH);
-        let req = match params.filter {
+        let req = match params.customer_id_filter {
             None => req,
             Some(CustomerId::Orb(id)) => req.query(&[("customer_id", id)]),
             Some(CustomerId::External(id)) => req.query(&[("external_customer_id", id)]),
+        };
+        let req = match params.status_filter {
+            None => req,
+            Some(status) => req.query(&[("status", status)]),
         };
         self.stream_paginated_request(&params.inner, req)
             .try_filter_map(|subscription: Subscription<CustomerResponse>| async move {
