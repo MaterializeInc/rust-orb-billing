@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
 use time::OffsetDateTime;
 
-use crate::PriceOverride;
+use crate::{PriceOverride, RedeemedCoupon};
 use crate::client::customers::{Customer, CustomerId, CustomerResponse};
 use crate::client::marketplaces::ExternalMarketplace;
 use crate::client::plans::{Plan, PlanId};
@@ -85,6 +85,9 @@ pub struct CreateSubscriptionRequest<'a> {
     /// Optionally provide a list of overrides for prices on the plan
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price_overrides: Option<Vec<PriceOverride>>,
+    /// Coupon to apply to this subscription
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupon_redemption_code: Option<&'a str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
@@ -145,6 +148,8 @@ pub struct Subscription<C = Customer> {
     /// The time at which the subscription was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// Coupon that was redeemed for the subscription.
+    pub redeemed_coupon: Option<RedeemedCoupon>,
 }
 
 /// The status of an Orb subscription.
@@ -250,6 +255,7 @@ impl Client {
                         auto_collection: subscription.auto_collection,
                         default_invoice_memo: subscription.default_invoice_memo,
                         created_at: subscription.created_at,
+                        redeemed_coupon: subscription.redeemed_coupon,
                     })),
                     CustomerResponse::Deleted {
                         id: _,
