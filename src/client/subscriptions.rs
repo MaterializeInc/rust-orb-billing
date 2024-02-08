@@ -100,6 +100,15 @@ pub struct SubscriptionExternalMarketplaceRequest<'a> {
     pub reporting_id: &'a str,
 }
 
+/// Updates the quantity for a fixed fee
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct UpdatePriceQuantityRequest<'a> {
+    /// Price for which the quantity should be updated. Must be a fixed fee.
+    pub price_id: &'a str,
+    /// New quantity for the fixed fee.
+    pub quantity: serde_json::Number,
+}
+
 /// An Orb subscription.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Subscription<C = Customer> {
@@ -291,6 +300,19 @@ impl Client {
     /// Gets a subscription by ID.
     pub async fn get_subscription(&self, id: &str) -> Result<Subscription, Error> {
         let req = self.build_request(Method::GET, SUBSCRIPTIONS_PATH.chain_one(id));
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Updates the quantity for a fixed fee
+    pub async fn update_price_quantity(&self, id: &str, params: &UpdatePriceQuantityRequest<'_>) -> Result<Subscription, Error> {
+        let req = self.build_request(
+            Method::POST,
+            SUBSCRIPTIONS_PATH
+            .chain_one(id)
+            .chain_one("update_fixed_fee_quantity")
+        );
+        let req = req.json(params);
         let res = self.send_request(req).await?;
         Ok(res)
     }

@@ -65,7 +65,7 @@ pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::{Plan, PlanId};
 pub use client::prices::{OverrideUnitPrice, Price, PriceOverride, TieredPrice, UnitPrice};
 pub use client::subscriptions::{
-    CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus,
+    CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus, UpdatePriceQuantityRequest
 };
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;
