@@ -42,6 +42,7 @@ mod error;
 mod serde;
 mod util;
 
+pub use client::coupons::{Coupon, CouponListParams, RedeemedCoupon};
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
     AddressRequest, CostViewMode, CreateCustomerRequest, Customer, CustomerCostBucket,
