@@ -109,6 +109,27 @@ pub struct UpdatePriceQuantityRequest<'a> {
     pub quantity: serde_json::Number,
 }
 
+/// Changes the plan on an existing subscription
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct SchedulePlanChangeRequest<'a> {
+    /// The plan to switch to.
+    #[serde(flatten)]
+    pub plan_id: PlanId<'a>,
+    /// One of ["requested_date", "end_of_subscription_term", "immediate"]
+    pub change_option: &'a str,
+    /// Whether to align billing periods with the subscription's start date.
+    ///
+    /// If `None`, the value is determined by the plan configuration.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub align_billing_with_subscription_start_date: Option<bool>,
+    /// Optionally provide a list of overrides for prices on the plan
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub price_overrides: Option<Vec<PriceOverride>>,
+    /// Coupon to apply to this subscription
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub coupon_redemption_code: Option<&'a str>,
+}
+
 /// An Orb subscription.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Subscription<C = Customer> {
@@ -323,6 +344,19 @@ impl Client {
             SUBSCRIPTIONS_PATH
             .chain_one(id)
             .chain_one("update_fixed_fee_quantity")
+        );
+        let req = req.json(params);
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Changes the plan on an existing subscription
+    pub async fn schedule_plan_change(&self, id: &str, params: &SchedulePlanChangeRequest<'_>) -> Result<Subscription, Error> {
+        let req = self.build_request(
+            Method::POST,
+            SUBSCRIPTIONS_PATH
+            .chain_one(id)
+            .chain_one("schedule_plan_change")
         );
         let req = req.json(params);
         let res = self.send_request(req).await?;
