@@ -117,11 +117,9 @@ pub struct SchedulePlanChangeRequest<'a> {
     pub plan_id: PlanId<'a>,
     /// One of ["requested_date", "end_of_subscription_term", "immediate"]
     pub change_option: &'a str,
-    /// Whether to align billing periods with the subscription's start date.
-    ///
-    /// If `None`, the value is determined by the plan configuration.
+    /// Whether to align billing periods with the plan change date.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub align_billing_with_subscription_start_date: Option<bool>,
+    pub align_billing_with_plan_change_date: Option<bool>,
     /// Optionally provide a list of overrides for prices on the plan
     #[serde(skip_serializing_if = "Option::is_none")]
     pub price_overrides: Option<Vec<PriceOverride>>,
