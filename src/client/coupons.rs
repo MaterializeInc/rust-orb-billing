@@ -16,9 +16,14 @@ pub struct Coupon {
     pub id: String,
     /// User-facing coupon code
     pub redemption_code: String,
+    // The number of times this coupon has been redeemed.
+    pub times_redeemed: serde_json::Number,
     /// This allows for a coupon's discount to apply for a limited time
     /// (determined in months); a null value here means "unlimited time".
     pub duration_in_months: Option<serde_json::Number>,
+    // The maximum number of redemptions allowed for this coupon before it is exhausted;
+    // null here means "unlimited".
+    pub max_redemptions: Option<serde_json::Number>,
     /// The type of discount
     pub discount: Discount,
 }
@@ -84,7 +89,6 @@ impl<'a> CouponListParams<'a> {
         self
     }
 
-
     /// Filters the listing to the specified redemption code.
     pub const fn redemption_code(mut self, filter: &'a str) -> Self {
         self.redemption_code_filter = Some(filter);
@@ -103,7 +107,10 @@ impl Client {
     ///
     /// The underlying API call is paginated. The returned stream will fetch
     /// additional pages as it is consumed.
-    pub fn list_coupons(&self, params: &CouponListParams) -> impl Stream<Item = Result<Coupon, Error>> + '_ {
+    pub fn list_coupons(
+        &self,
+        params: &CouponListParams,
+    ) -> impl Stream<Item = Result<Coupon, Error>> + '_ {
         let req = self.build_request(Method::GET, COUPONS_PATH);
         let req = match params.redemption_code_filter {
             Some(redemption_code) => req.query(&[("redemption_code", redemption_code)]),
