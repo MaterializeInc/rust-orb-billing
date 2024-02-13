@@ -16,6 +16,9 @@ pub struct Coupon {
     pub id: String,
     /// User-facing coupon code
     pub redemption_code: String,
+    /// This allows for a coupon's discount to apply for a limited time
+    /// (determined in months); a null value here means "unlimited time".
+    pub duration_in_months: Option<serde_json::Number>,
     /// The type of discount
     pub discount: Discount,
 }
