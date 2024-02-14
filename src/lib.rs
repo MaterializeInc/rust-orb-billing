@@ -42,7 +42,7 @@ mod error;
 mod serde;
 mod util;
 
-pub use client::coupons::{Coupon, CouponListParams, RedeemedCoupon};
+pub use client::coupons::{Coupon, CouponListParams, Discount, RedeemedCoupon};
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
     AddressRequest, CostViewMode, CreateCustomerRequest, Customer, CustomerCostBucket,
@@ -65,7 +65,8 @@ pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::{Plan, PlanId};
 pub use client::prices::{OverrideUnitPrice, Price, PriceOverride, TieredPrice, UnitPrice};
 pub use client::subscriptions::{
-    CreateSubscriptionRequest, SchedulePlanChangeRequest, Subscription, SubscriptionListParams, SubscriptionStatus, UpdatePriceQuantityRequest
+    CreateSubscriptionRequest, SchedulePlanChangeRequest, Subscription, SubscriptionListParams,
+    SubscriptionStatus, UpdatePriceQuantityRequest,
 };
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;
