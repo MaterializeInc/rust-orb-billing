@@ -74,14 +74,55 @@ pub struct Plan {
     // TODO: many missing fields.
 }
 
+/// Parameters for a plan list operation.
+#[derive(Debug, Clone)]
+pub struct PlanListParams<'a> {
+    inner: ListParams,
+    status_filter: Option<&'a str>,
+}
+
+impl<'a> Default for PlanListParams<'a> {
+    fn default() -> PlanListParams<'a> {
+        PlanListParams::DEFAULT
+    }
+}
+
+impl<'a> PlanListParams<'a> {
+    /// The default plan list parameters.
+    ///
+    /// Exposed as a constant for use in constant evaluation contexts.
+    pub const DEFAULT: PlanListParams<'static> = PlanListParams {
+        inner: ListParams::DEFAULT,
+        status_filter: None,
+    };
+
+    /// Sets the page size for the list operation.
+    ///
+    /// See [`ListParams::page_size`].
+    pub const fn page_size(mut self, page_size: u64) -> Self {
+        self.inner = self.inner.page_size(page_size);
+        self
+    }
+
+    /// Filters the listing by status
+    pub const fn status(mut self, filter: &'a str) -> Self {
+        self.status_filter = Some(filter);
+        self
+    }
+}
+
 impl Client {
     /// Lists all plans.
     ///
     /// The underlying API call is paginated. The returned stream will fetch
     /// additional pages as it is consumed.
-    pub fn list_plans(&self, params: &ListParams) -> impl Stream<Item = Result<Plan, Error>> + '_ {
+    pub fn list_plans(&self, params: &PlanListParams) -> impl Stream<Item = Result<Plan, Error>> + '_ {
         let req = self.build_request(Method::GET, PLANS_PATH);
-        self.stream_paginated_request(params, req)
+        let req = match params.status_filter {
+            None => req,
+            Some(status) => req.query(&[("status", status)]),
+        };
+        self.stream_paginated_request(&params.inner, req)
     }
 
     /// Gets a plan by ID.
