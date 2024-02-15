@@ -47,7 +47,7 @@ use orb_billing::{
     CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue,
     EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry,
     LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
-    UpdateCustomerRequest, VoidReason,
+    UpdateCustomerRequest, VoidReason, PlanListParams,
 };
 
 /// The API key to authenticate with.
@@ -558,7 +558,7 @@ async fn test_plans() {
     let client = new_client();
 
     let plans: Vec<_> = client
-        .list_plans(&MAX_PAGE_LIST_PARAMS)
+        .list_plans(&PlanListParams::default().status("active"))
         .try_collect()
         .await
         .unwrap();
