@@ -274,6 +274,10 @@ pub struct CreditLedgerInvoiceSettingsRequestParams<'a> {
     /// An optional memo to display on the invoice
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<&'a str>,
+    /// Whether the credits should be withheld from the customer account until the invoice is paid.
+    /// This applies primarily to stripe invoicing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub require_successful_payment: Option<bool>,
 }
 
 /// The parameters used to create a customer credit ledger entry.

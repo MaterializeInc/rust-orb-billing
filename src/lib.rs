@@ -44,8 +44,8 @@ mod util;
 
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, CostViewMode, CreateCustomerRequest, Customer, CustomerCostBucket,
-    CustomerCostItem, CustomerCostParams, CustomerCostPriceBlock,
+    AddressRequest, CostViewMode, CreateCustomerRequest, CreditLedgerInvoiceSettingsRequestParams,
+    Customer, CustomerCostBucket, CustomerCostItem, CustomerCostParams, CustomerCostPriceBlock,
     CustomerCostPriceBlockMatrixPrice, CustomerCostPriceBlockMatrixPriceConfig,
     CustomerCostPriceBlockMatrixPriceValue, CustomerCostPriceBlockPrice,
     CustomerCostPriceBlockPriceGroup, CustomerCostPriceBlockUnitPrice,
