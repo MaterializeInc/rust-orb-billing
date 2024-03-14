@@ -183,6 +183,8 @@ pub struct Customer {
     /// The time at which the customer was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// An authenticated URL link to the customer's private Orb dashboard portal.
+    pub portal_url: Option<String>,
 }
 
 /// A payment provider.
