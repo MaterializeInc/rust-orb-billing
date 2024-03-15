@@ -464,12 +464,19 @@ pub enum CostViewMode {
     Cumulative,
 }
 
+/// The filters applied to the customer costs query.
 #[derive(Debug, Default, Clone)]
-struct CustomerCostParamsFilter<'a> {
-    timeframe_start: Option<&'a OffsetDateTime>,
-    timeframe_end: Option<&'a OffsetDateTime>,
-    view_mode: Option<CostViewMode>,
-    group_by: Option<&'a str>,
+pub struct CustomerCostParamsFilter<'a> {
+    /// The start of the returned range. If not specified this defaults to the billing period start
+    /// date.
+    pub timeframe_start: Option<&'a OffsetDateTime>,
+    /// The start of the returned range. If not specified this defaults to the billing period end
+    /// date.
+    pub timeframe_end: Option<&'a OffsetDateTime>,
+    /// How costs should be broken down in the resultant day-by-day view.
+    pub view_mode: Option<CostViewMode>,
+    /// The custom attribute to group costs by.
+    pub group_by: Option<&'a str>,
 }
 
 trait Filterable<T> {
@@ -513,7 +520,8 @@ impl Filterable<CustomerCostParamsFilter<'_>> for RequestBuilder {
 /// Parameters for a Customer Costs query.
 #[derive(Debug, Default, Clone)]
 pub struct CustomerCostParams<'a> {
-    filter: CustomerCostParamsFilter<'a>,
+    /// The filters applied to the customer costs query.
+    pub filter: CustomerCostParamsFilter<'a>,
 }
 
 impl<'a> CustomerCostParams<'a> {

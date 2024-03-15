@@ -45,10 +45,10 @@ mod util;
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
     AddressRequest, CostViewMode, CreateCustomerRequest, CreditLedgerInvoiceSettingsRequestParams,
-    Customer, CustomerCostBucket, CustomerCostItem, CustomerCostParams, CustomerCostPriceBlock,
-    CustomerCostPriceBlockMatrixPrice, CustomerCostPriceBlockMatrixPriceConfig,
-    CustomerCostPriceBlockMatrixPriceValue, CustomerCostPriceBlockPrice,
-    CustomerCostPriceBlockPriceGroup, CustomerCostPriceBlockUnitPrice,
+    Customer, CustomerCostBucket, CustomerCostItem, CustomerCostParams, CustomerCostParamsFilter,
+    CustomerCostPriceBlock, CustomerCostPriceBlockMatrixPrice,
+    CustomerCostPriceBlockMatrixPriceConfig, CustomerCostPriceBlockMatrixPriceValue,
+    CustomerCostPriceBlockPrice, CustomerCostPriceBlockPriceGroup, CustomerCostPriceBlockUnitPrice,
     CustomerCostPriceBlockUnitPriceConfig, CustomerCreditBlock, CustomerId,
     CustomerPaymentProviderRequest, LedgerEntry, LedgerEntryRequest, PaymentProvider,
     UpdateCustomerRequest, VoidReason,
@@ -63,7 +63,8 @@ pub use client::invoices::{
 pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::{Plan, PlanId};
 pub use client::subscriptions::{
-    CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus,
+    CreateSubscriptionRequest, SchedulePlanChangeRequestBody, Subscription, SubscriptionListParams,
+    SubscriptionPlanChangeOption, SubscriptionStatus,
 };
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;
