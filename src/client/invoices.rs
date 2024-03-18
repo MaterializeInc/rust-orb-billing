@@ -122,6 +122,22 @@ impl InvoiceStatusFilter {
     };
 }
 
+/// https://docs.withorb.com/reference/mark-invoice-as-paid
+/// This endpoint allows an invoice's status to be set the paid status.
+/// This can only be done to invoices that are in the issued status.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct MarkInvoiceAsPaidBody<'a> {
+    /// A date string to specify the date of the payment.
+    #[serde(with = "time::serde::rfc3339")]
+    pub payment_received_date: OffsetDateTime,
+
+    /// An optional external ID to associate with the payment.
+    pub external_id: Option<&'a str>,
+
+    /// An optional note to associate with the payment.
+    pub notes: Option<&'a str>,
+}
+
 /// Parameters for a subscription list operation.
 #[derive(Debug, Clone)]
 pub struct InvoiceListParams<'a> {
@@ -223,6 +239,29 @@ impl Client {
         Ok(res)
     }
 
+    /// Mark an invoice as paid. For example, this can be done in response to
+    /// Stripe's invoice paid webhook.
+    pub async fn mark_invoice_as_paid<'a>(
+        &self,
+        id: &str,
+        body: MarkInvoiceAsPaidBody<'a>,
+    ) -> Result<Invoice, Error> {
+        let req = self.build_request(Method::POST, INVOICES.chain_one(id).chain_one("mark_paid"));
+        let req = req.json(&body);
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// This endpoint allows an invoice's status to be set the void status.
+    /// This can only be done to invoices that are in the issued status.
+    /// If the associated invoice has used the customer balance to change the amount due, the
+    /// customer balance operation will be reverted. For example, if the invoice used 10 of
+    /// $customer balance, that amount will be added back to the customer balance upon voiding.
+    pub async fn void_invoice<'a>(&self, id: &str) -> Result<Invoice, Error> {
+        let req = self.build_request(Method::POST, INVOICES.chain_one(id).chain_one("void"));
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
     // TODO: get upcoming invoice.
-    // TODO: void invoice.
 }

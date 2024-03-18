@@ -59,6 +59,7 @@ pub use client::events::{
 };
 pub use client::invoices::{
     Invoice, InvoiceCustomer, InvoiceListParams, InvoiceStatusFilter, InvoiceSubscription,
+    MarkInvoiceAsPaidBody,
 };
 pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::{Plan, PlanId};
