@@ -26,6 +26,8 @@ use crate::config::ListParams;
 use crate::error::Error;
 use crate::util::StrIteratorExt;
 
+use super::coupons::Discount;
+
 const PLANS_PATH: [&str; 1] = ["plans"];
 
 /// A plan ID.
@@ -43,6 +45,20 @@ impl<'a> Default for PlanId<'a> {
     fn default() -> PlanId<'a> {
         PlanId::Orb("")
     }
+}
+
+/// One phase of a plan.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct PlanPhase {
+    /// Name of the plan phase
+    pub name: String,
+    /// How many terms of length duration_unit this phase is active for. If null, 
+    /// this phase is evergreen and active indefinitely.
+    pub duration: Option<i64>,
+    /// Possible values: [daily, monthly, quarterly, annual]
+    pub duration_unit: Option<String>,
+    /// Discount during this phase
+    pub discount: Option<Discount>,
 }
 
 /// An Orb plan.
@@ -71,6 +87,10 @@ pub struct Plan {
     pub status: String,
     /// Prices for this plan
     pub prices: Vec<Price>,
+    /// The discount that is attached to the plan.
+    pub discount: Option<Discount>,
+    /// Phases of the plan.
+    pub plan_phases: Option<Vec<PlanPhase>>,
     // TODO: many missing fields.
 }
 
