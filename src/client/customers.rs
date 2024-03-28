@@ -183,6 +183,8 @@ pub struct Customer {
     /// The time at which the customer was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
+    /// The link to the customer's portal.
+    pub portal_url: Option<String>,
 }
 
 /// A payment provider.
