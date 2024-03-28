@@ -684,6 +684,7 @@ async fn test_customer_costs() {
     delete_all_test_customers(&client).await;
     let nonce = rand::thread_rng().gen::<u32>();
     let customer = create_test_customer(&client, 0).await;
+    // lower bound for a customer costs query
     let idempotency_key = format!("test-subscription-{nonce}-0");
     let subscription = client
         .create_subscription(&CreateSubscriptionRequest {
@@ -701,10 +702,17 @@ async fn test_customer_costs() {
         subscription.plan.external_id.as_deref(),
         Some("test-complex")
     );
+    // upper bound for a customer costs query
+    let mut now = OffsetDateTime::now_utc();
+    now = now.add(Duration::from_secs(60 * 60 * 24));
+    let then = now.sub(Duration::from_secs(60 * 60 * 24));
     let costs = client
         .get_customer_costs(
             &customer.id,
-            &CustomerCostParams::default().view_mode(CostViewMode::Periodic),
+            &CustomerCostParams::default()
+                .view_mode(CostViewMode::Periodic)
+                .timeframe_start(&then)
+                .timeframe_end(&now),
         )
         .await
         .unwrap();
@@ -735,7 +743,8 @@ async fn test_customer_costs() {
         ],
         matrix_price.matrix_config.matrix_values[0].dimension_values
     );
-    let now = OffsetDateTime::now_utc();
+    let mut now = OffsetDateTime::now_utc();
+    now = now.add(Duration::from_secs(60 * 60 * 24));
     let then = now.sub(Duration::from_secs(60 * 60 * 24));
     let costs = client
         .get_customer_costs(
