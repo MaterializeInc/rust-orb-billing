@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    name: test
+    name: test Rust 1.75.0
     runs-on: ${{ matrix.os }}
     # We only have one test Orb workspace to use for all CI jobs.
     concurrency: ci
