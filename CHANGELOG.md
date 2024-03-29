@@ -9,6 +9,10 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add `portal_url` to `Customer`.
+* Add `require_successful_payment` field to the `CreditLedgerInvoiceSettingsRequestParams`.
+* Bump MSRV to 1.75.
+
 ## [0.10.0] - 2024-01-29
 
 * Add `invoice_number`, `currency`, `issued_at`, and `metadata` fields to the
