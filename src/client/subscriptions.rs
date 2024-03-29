@@ -83,6 +83,60 @@ pub struct CreateSubscriptionRequest<'a> {
     pub idempotency_key: Option<&'a str>,
 }
 
+/// https://docs.withorb.com/reference/schedule-plan-change
+/// This endpoint can be used to change the plan on an existing subscription.
+/// The body parameter change_option determines the timing of the plan change.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct SchedulePlanChangeRequestBody<'a> {
+    /// The plan that the customer should be switched to.
+    ///
+    /// The plan determines the pricing and the cadence of the subscription.
+    #[serde(flatten)]
+    pub plan_id: PlanId<'a>,
+    /// The date that the plan change should take effect.
+    /// This parameter can only be passed if the change_option is requested_date.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub change_date: Option<OffsetDateTime>,
+    /// Determines the timing of a subscription plan change.
+    pub change_option: SubscriptionPlanChangeOption,
+    /// When this subscription's accrued usage reaches this threshold, an invoice will be issued
+    /// for the subscription. If not specified, invoices will only be issued at the end of the
+    /// billing period.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub invoicing_threshold: Option<&'a str>,
+    /// The phase of the plan to start with
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub initial_phase_order: Option<i32>,
+    /// An idempotency key can ensure that if the same request comes in
+    /// multiple times in a 48-hour period, only one makes changes.
+    // NOTE: this is passed in a request header, not the body
+    #[serde(skip_serializing)]
+    pub idempotency_key: Option<&'a str>,
+}
+
+/// The body parameter change_option determines the timing of a subscription plan change.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize_enum_str)]
+#[serde(rename_all = "snake_case")]
+pub enum SubscriptionPlanChangeOption {
+    /// requested_date: changes the plan on the requested date (change_date).
+    /// If no timezone is provided, the customer's timezone is used.
+    /// The change_date body parameter is required if this option is chosen.
+    RequestedDate,
+    /// end_of_subscription_term: changes the plan at the end of the existing plan's term.
+    /// Issuing this plan change request for a monthly subscription will keep the existing
+    /// plan active until the start of the subsequent month, and potentially issue an invoice
+    /// for any usage charges incurred in the intervening period.
+    /// Issuing this plan change request for a yearly subscription will keep the existing plan
+    /// active for the full year.
+    EndOfSubscriptionTerm,
+    /// immediate: changes the plan immediately. Subscriptions that have their plan changed with
+    /// this option will be invoiced immediately. This invoice will include any usage fees incurred
+    /// in the billing period up to the change, along with any prorated recurring fees for the
+    /// billing period, if applicable.
+    Immediate,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct SubscriptionExternalMarketplaceRequest<'a> {
     /// The kind of the external marketplace.
@@ -137,7 +191,8 @@ pub struct Subscription<C = Customer> {
     /// Determines the default memo on this subscription's invoices.
     ///
     /// If `None`, the value is determined by the plan configuration.
-    pub default_invoice_memo: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub default_invoice_memo: Option<String>,
     /// The time at which the subscription was created.
     #[serde(with = "time::serde::rfc3339")]
     pub created_at: OffsetDateTime,
@@ -281,6 +336,28 @@ impl Client {
     /// Gets a subscription by ID.
     pub async fn get_subscription(&self, id: &str) -> Result<Subscription, Error> {
         let req = self.build_request(Method::GET, SUBSCRIPTIONS_PATH.chain_one(id));
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Changes the associated plan for a subscription.
+    /// https://docs.withorb.com/reference/schedule-plan-change
+    pub async fn schedule_plan_change(
+        &self,
+        id: &str,
+        body: &SchedulePlanChangeRequestBody<'_>,
+    ) -> Result<Subscription, Error> {
+        let mut req = self.build_request(
+            Method::POST,
+            SUBSCRIPTIONS_PATH
+                .chain_one(id)
+                .chain_one("schedule_plan_change"),
+        );
+        if let Some(key) = body.idempotency_key {
+            req = req.header("Idempotency-Key", key);
+        }
+        let req = req.json(body);
+
         let res = self.send_request(req).await?;
         Ok(res)
     }
