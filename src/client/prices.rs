@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use time::OffsetDateTime;
 
 /// An Orb price
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -22,6 +23,8 @@ pub struct UnitPrice {
     pub name: String,
     /// Config with rates per unit
     pub unit_config: UnitConfig,
+    /// Which phase of the plan this price is associated with
+    pub plan_phase_order: Option<i64>,
     // TODO: many missing fields.
 }
 
@@ -35,7 +38,46 @@ pub struct TieredPrice {
     pub name: String,
     /// Config with rates per tier
     pub tiered_config: TieredConfig,
+    /// Which phase of the plan this price is associated with
+    pub plan_phase_order: Option<i64>,
     // TODO: many missing fields.
+}
+
+
+/// An Orb price interval
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct PriceInterval {
+    /// The id of the price interval.
+    pub id: String,
+    /// The price of the interval.
+    pub price: Price,
+    /// The start date of the price interval.
+    /// This is the date that Orb starts billing for this price.
+    #[serde(with = "time::serde::rfc3339")]
+    pub start_date: OffsetDateTime,
+    /// The end date of the price interval.
+    /// This is the date that Orb stops billing for this price.
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub end_date: Option<OffsetDateTime>,
+}
+
+/// A list of price intervals to edit on the subscription.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct EditPriceInterval {
+    /// The id of the price interval to edit.
+    pub price_interval_id: String,
+    /// A list of fixed fee quantity transitions to use for this price interval.
+    /// Note that this list will overwrite all existing fixed fee quantity transitions on the price interval.
+    pub fixed_fee_quantity_transitions: Option<Vec<FixedFeeQuantityTransition>>,
+}
+
+/// A fixed fee quantity transition is used to update the quantity for a price interval.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct FixedFeeQuantityTransition {
+    /// The quantity of the fixed fee quantity transition.
+    pub quantity: serde_json::Number,
+    /// The date that the fixed fee quantity transition should take effect.
+    pub effective_date: String,
 }
 
 
