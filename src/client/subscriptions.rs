@@ -21,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_enum_str::{Deserialize_enum_str, Serialize_enum_str};
 use time::OffsetDateTime;
 
-use crate::{PriceOverride, RedeemedCoupon};
+use crate::{EditPriceInterval, PriceOverride, RedeemedCoupon};
 use crate::client::customers::{Customer, CustomerId, CustomerResponse};
 use crate::client::marketplaces::ExternalMarketplace;
 use crate::client::plans::{Plan, PlanId};
@@ -29,6 +29,8 @@ use crate::client::Client;
 use crate::config::ListParams;
 use crate::error::Error;
 use crate::util::StrIteratorExt;
+
+use super::prices::PriceInterval;
 
 const SUBSCRIPTIONS_PATH: [&str; 1] = ["subscriptions"];
 
@@ -128,6 +130,13 @@ pub struct SchedulePlanChangeRequest<'a> {
     pub coupon_redemption_code: Option<&'a str>,
 }
 
+/// A request to update the price intervals on a subscription.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct PriceIntervalsRequest {
+    /// Edit existing price intervals.
+    pub edit: Vec<EditPriceInterval>,
+}
+
 /// An Orb subscription.
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
 pub struct Subscription<C = Customer> {
@@ -178,6 +187,8 @@ pub struct Subscription<C = Customer> {
     pub created_at: OffsetDateTime,
     /// Coupon that was redeemed for the subscription.
     pub redeemed_coupon: Option<RedeemedCoupon>,
+    /// The price intervals for this subscription.
+    pub price_intervals: Vec<PriceInterval>,
 }
 
 /// The status of an Orb subscription.
@@ -296,6 +307,7 @@ impl Client {
                         default_invoice_memo: subscription.default_invoice_memo,
                         created_at: subscription.created_at,
                         redeemed_coupon: subscription.redeemed_coupon,
+                        price_intervals: subscription.price_intervals,
                     })),
                     CustomerResponse::Deleted {
                         id: _,
@@ -355,6 +367,19 @@ impl Client {
             SUBSCRIPTIONS_PATH
             .chain_one(id)
             .chain_one("schedule_plan_change")
+        );
+        let req = req.json(params);
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Add and edit price intervals on a subscription.
+    pub async fn price_intervals(&self, id: &str, params: &PriceIntervalsRequest) -> Result<Subscription, Error> {
+        let req = self.build_request(
+            Method::POST,
+            SUBSCRIPTIONS_PATH
+            .chain_one(id)
+            .chain_one("price_intervals")
         );
         let req = req.json(params);
         let res = self.send_request(req).await?;
