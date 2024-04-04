@@ -40,15 +40,7 @@ use test_log::test;
 use tokio::time::{self, Duration};
 use tracing::info;
 
-use orb_billing::{
-    AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, AmendEventRequest, Client, ClientConfig, CostViewMode, CreateCustomerRequest,
-    CreateSubscriptionRequest, Customer, CustomerCostParams, CustomerCostPriceBlockPrice,
-    CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue,
-    EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry,
-    LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
-    UpdateCustomerRequest, VoidReason, PlanListParams,
-};
+use orb_billing::{AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address, AddressRequest, AmendEventRequest, Client, ClientConfig, CostViewMode, CreateCustomerRequest, CreateSubscriptionRequest, Customer, CustomerCostParams, CustomerCostPriceBlockPrice, CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry, LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest, UpdateCustomerRequest, VoidReason, PlanListParams, CreateBackfillParams};
 
 /// The API key to authenticate with.
 static API_KEY: Lazy<String> = Lazy::new(|| env::var("ORB_API_KEY").expect("missing ORB_API_KEY"));
@@ -661,6 +653,50 @@ async fn test_subscriptions() {
         .await
         .unwrap();
     assert_eq!(fetched_subscriptions, &[subscriptions.remove(0)]);
+}
+
+#[test(tokio::test)]
+async fn test_create_backfill() {
+    let client = new_client();
+    let now = OffsetDateTime::now_utc();
+    let response = client.create_backfill(&CreateBackfillParams {
+        replace_existing_events: false,
+        timeframe_start: now.replace_date(now.date().previous_day().expect("Y10K problem detected")),
+        timeframe_end: now,
+        close_time: None,
+        customer_id: None,
+        external_customer_id: None,
+    }).await.unwrap();
+    println!("{}", serde_json::to_string(&response).unwrap());
+}
+
+#[test(tokio::test)]
+async fn test_close_backfill() {
+    let client = new_client();
+    let response = client.close_backfill("KuXfa6NqwM34DSCr".to_string()).await.unwrap();
+    println!("{}", serde_json::to_string(&response).unwrap());
+}
+
+#[test(tokio::test)]
+async fn test_fetch_backfill() {
+    let client = new_client();
+    let response = client.fetch_backfill("KuXfa6NqwM34DSCr".to_string()).await.unwrap();
+    println!("{}", serde_json::to_string(&response).unwrap());
+}
+
+#[test(tokio::test)]
+async fn test_revert_backfill() {
+    let client = new_client();
+    let response = client.revert_backfill("W5FLosAUD9KrQWVW".to_string()).await.unwrap();
+    println!("{}", serde_json::to_string(&response).unwrap());
+}
+#[test(tokio::test)]
+async fn test_list_backfill() {
+    let client = new_client();
+    let responses = client.list_backfills();
+    for response in responses.try_collect::<Vec<_>>().await.unwrap() {
+        println!("{}", serde_json::to_string(&response).unwrap());
+    }
 }
 
 #[test(tokio::test)]

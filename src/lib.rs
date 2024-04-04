@@ -42,6 +42,7 @@ mod error;
 mod serde;
 mod util;
 
+pub use client::backfill::CreateBackfillParams;
 pub use client::coupons::{Coupon, CouponListParams, Discount, RedeemedCoupon};
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,

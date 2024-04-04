@@ -32,6 +32,7 @@ pub mod plans;
 pub mod prices;
 pub mod subscriptions;
 pub mod taxes;
+pub(crate) mod backfill;
 
 /// An API client for Orb.
 ///
