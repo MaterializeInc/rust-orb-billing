@@ -16,9 +16,13 @@
 use std::time::Duration;
 
 use once_cell::sync::Lazy;
-use reqwest::Url;
+use reqwest::{Response, Url};
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::{
+    default_on_request_failure, RetryTransientMiddleware, Retryable, RetryableStrategy,
+};
 
-use crate::Client;
+use crate::client::Client;
 
 pub static DEFAULT_ENDPOINT: Lazy<Url> = Lazy::new(|| {
     "https://api.billwithorb.com/v1"
@@ -35,27 +39,69 @@ pub struct ClientConfig {
 /// A builder for a [`Client`].
 pub struct ClientBuilder {
     endpoint: Url,
+    retry_policy: Option<ExponentialBackoff>,
 }
 
 impl Default for ClientBuilder {
     fn default() -> ClientBuilder {
         ClientBuilder {
             endpoint: DEFAULT_ENDPOINT.clone(),
+            retry_policy: Some(
+                ExponentialBackoff::builder()
+                    .retry_bounds(Duration::from_secs(1), Duration::from_secs(5))
+                    .build_with_max_retries(5),
+            ),
+        }
+    }
+}
+
+/// Retry requests with a successful response of 429 (too many requests).
+struct Retry429;
+impl RetryableStrategy for Retry429 {
+    fn handle(&self, res: &Result<Response, reqwest_middleware::Error>) -> Option<Retryable> {
+        match res {
+            // Retry if response status is 429
+            Ok(success) if success.status() == 429 => Some(Retryable::Transient),
+            // Otherwise do not retry a successful request
+            Ok(_) => None,
+            // Retry failures due to network errors
+            Err(error) => default_on_request_failure(error),
         }
     }
 }
 
 impl ClientBuilder {
+    /// Sets the policy for retrying failed API calls.
+    ///
+    /// Note that the created [`Client`] will retry all API calls.
+    pub fn with_retry_policy(mut self, policy: ExponentialBackoff) -> Self {
+        self.retry_policy = Some(policy);
+        self
+    }
+
+    /// Sets the endpoint.
+    pub fn with_endpoint(mut self, endpoint: Url) -> Self {
+        self.endpoint = endpoint;
+        self
+    }
+
     /// Creates a [`Client`] that incorporates the optional parameters
     /// configured on the builder and the specified required parameters.
     pub fn build(self, config: ClientConfig) -> Client {
-        let inner = reqwest::ClientBuilder::new()
+        let client = reqwest::ClientBuilder::new()
             .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(60))
             .build()
             .unwrap();
         Client {
-            inner,
+            client_retryable: match self.retry_policy {
+                Some(policy) => reqwest_middleware::ClientBuilder::new(client.clone())
+                    .with(RetryTransientMiddleware::new_with_policy_and_strategy(
+                        policy, Retry429,
+                    ))
+                    .build(),
+                None => reqwest_middleware::ClientBuilder::new(client.clone()).build(),
+            },
             api_key: config.api_key,
             endpoint: self.endpoint,
         }
