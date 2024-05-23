@@ -73,7 +73,7 @@ impl RetryableStrategy for Retry429 {
 impl ClientBuilder {
     /// Sets the policy for retrying failed API calls.
     ///
-    /// Note that the created [`Client`] will retry all API calls.
+    /// Note that the created [`Client`] will retry all API calls that return a 429 status code.
     pub fn with_retry_policy(mut self, policy: ExponentialBackoff) -> Self {
         self.retry_policy = Some(policy);
         self

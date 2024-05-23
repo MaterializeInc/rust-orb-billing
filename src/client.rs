@@ -66,7 +66,8 @@ impl Client {
         url.path_segments_mut()
             .expect("builder validated URL can be a base")
             .extend(path);
-        // All request methods and paths are assumed to be retryable.
+        // All request methods and paths are included to support retries for
+        // 429 status code.
         self.client_retryable
             .request(method, url)
             .bearer_auth(&self.api_key)

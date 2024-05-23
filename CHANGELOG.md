@@ -9,7 +9,7 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
-* Automatically retry HTTP requests on status code 429.
+* Automatically retry HTTP requests that return status code 429. (too many requests)
 
 ## [0.11.0] - 2024-03-29
 
