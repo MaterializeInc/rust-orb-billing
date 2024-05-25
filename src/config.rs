@@ -16,11 +16,9 @@
 use std::time::Duration;
 
 use once_cell::sync::Lazy;
-use reqwest::{Response, Url};
+use reqwest::Url;
 use reqwest_retry::policies::ExponentialBackoff;
-use reqwest_retry::{
-    default_on_request_failure, RetryTransientMiddleware, Retryable, RetryableStrategy,
-};
+use reqwest_retry::RetryTransientMiddleware;
 
 use crate::client::Client;
 
@@ -55,21 +53,6 @@ impl Default for ClientBuilder {
     }
 }
 
-/// Retry requests with a successful response of 429 (too many requests).
-struct Retry429;
-impl RetryableStrategy for Retry429 {
-    fn handle(&self, res: &Result<Response, reqwest_middleware::Error>) -> Option<Retryable> {
-        match res {
-            // Retry if response status is 429
-            Ok(success) if success.status() == 429 => Some(Retryable::Transient),
-            // Otherwise do not retry a successful request
-            Ok(_) => None,
-            // Retry failures due to network errors
-            Err(error) => default_on_request_failure(error),
-        }
-    }
-}
-
 impl ClientBuilder {
     /// Sets the policy for retrying failed API calls.
     ///
@@ -94,11 +77,9 @@ impl ClientBuilder {
             .build()
             .unwrap();
         Client {
-            client_retryable: match self.retry_policy {
+            inner: match self.retry_policy {
                 Some(policy) => reqwest_middleware::ClientBuilder::new(client.clone())
-                    .with(RetryTransientMiddleware::new_with_policy_and_strategy(
-                        policy, Retry429,
-                    ))
+                    .with(RetryTransientMiddleware::new_with_policy(policy))
                     .build(),
                 None => reqwest_middleware::ClientBuilder::new(client.clone()).build(),
             },

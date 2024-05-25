@@ -40,7 +40,7 @@ pub mod taxes;
 /// [`Arc`]: std::sync::Arc
 #[derive(Debug)]
 pub struct Client {
-    pub(crate) client_retryable: ClientWithMiddleware,
+    pub(crate) inner: ClientWithMiddleware,
     pub(crate) api_key: String,
     pub(crate) endpoint: Url,
 }
@@ -68,9 +68,7 @@ impl Client {
             .extend(path);
         // All request methods and paths are included to support retries for
         // 429 status code.
-        self.client_retryable
-            .request(method, url)
-            .bearer_auth(&self.api_key)
+        self.inner.request(method, url).bearer_auth(&self.api_key)
     }
 
     async fn send_request<T>(&self, req: RequestBuilder) -> Result<T, Error>
