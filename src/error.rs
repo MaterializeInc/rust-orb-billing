@@ -23,7 +23,7 @@ use reqwest::StatusCode;
 #[derive(Debug)]
 pub enum Error {
     /// An error in the underlying transport.
-    Transport(reqwest::Error),
+    Transport(reqwest_middleware::Error),
     /// An error returned by the API.
     Api(ApiError),
     /// The API returned an unexpected response.
@@ -79,9 +79,15 @@ impl fmt::Display for ApiError {
 
 impl std::error::Error for ApiError {}
 
+impl From<reqwest_middleware::Error> for Error {
+    fn from(e: reqwest_middleware::Error) -> Error {
+        Error::Transport(e)
+    }
+}
+
 impl From<reqwest::Error> for Error {
     fn from(e: reqwest::Error) -> Error {
-        Error::Transport(e)
+        Error::Transport(reqwest_middleware::Error::from(e))
     }
 }
 

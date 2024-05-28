@@ -15,7 +15,8 @@
 
 use async_stream::try_stream;
 use futures_core::Stream;
-use reqwest::{Method, RequestBuilder, Url};
+use reqwest::{Method, Url};
+use reqwest_middleware::{ClientWithMiddleware, RequestBuilder};
 use serde::de::DeserializeOwned;
 use serde::Deserialize;
 
@@ -39,7 +40,7 @@ pub mod taxes;
 /// [`Arc`]: std::sync::Arc
 #[derive(Debug)]
 pub struct Client {
-    pub(crate) inner: reqwest::Client,
+    pub(crate) inner: ClientWithMiddleware,
     pub(crate) api_key: String,
     pub(crate) endpoint: Url,
 }
@@ -65,6 +66,8 @@ impl Client {
         url.path_segments_mut()
             .expect("builder validated URL can be a base")
             .extend(path);
+        // All request methods and paths are included to support retries for
+        // 429 status code.
         self.inner.request(method, url).bearer_auth(&self.api_key)
     }
 
