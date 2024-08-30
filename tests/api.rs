@@ -42,12 +42,13 @@ use tracing::info;
 
 use orb_billing::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, AmendEventRequest, Client, ClientConfig, CostViewMode, CreateCustomerRequest,
-    CreateSubscriptionRequest, Customer, CustomerCostParams, CustomerCostPriceBlockPrice,
-    CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue,
-    EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry,
-    LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
-    UpdateCustomerRequest, VoidReason, CancelOption, CancelSubscriptionParams, SubscriptionStatus,
+    AddressRequest, AmendEventRequest, CancelOption, CancelSubscriptionParams, Client,
+    ClientConfig, CostViewMode, CreateCustomerRequest, CreateSubscriptionRequest, Customer,
+    CustomerCostParams, CustomerCostPriceBlockPrice, CustomerId, CustomerPaymentProviderRequest,
+    Error, Event, EventPropertyValue, EventSearchParams, IngestEventRequest, IngestionMode,
+    InvoiceListParams, LedgerEntry, LedgerEntryRequest, ListParams, PaymentProvider,
+    SubscriptionListParams, SubscriptionStatus, TaxId, TaxIdRequest, UpdateCustomerRequest,
+    VoidReason,
 };
 
 /// The API key to authenticate with.
@@ -186,7 +187,7 @@ async fn test_customers() {
         .try_collect()
         .await
         .unwrap();
-    assert_eq!(balance.get(0).unwrap().balance, inc_res.ledger.amount);
+    assert_eq!(balance.first().unwrap().balance, inc_res.ledger.amount);
     let ledger_res = client
         .create_ledger_entry(
             &customer.id,
@@ -541,7 +542,7 @@ async fn test_events() {
             .try_collect()
             .await
             .unwrap();
-        if events.get(0).map(|e| e.event_name.clone()) != Some("new test".into()) {
+        if events.first().map(|e| e.event_name.clone()) != Some("new test".into()) {
             info!("  events list not updated after {iteration} attempts.");
             if iteration < MAX_LIST_RETRIES {
                 continue;
@@ -669,11 +670,17 @@ async fn test_subscriptions() {
         cancellation_date: None,
     };
     let immediately_cancelled_subscription = client
-        .cancel_subscription(&subscription_to_cancel_immediately.id, &immediate_cancel_params)
+        .cancel_subscription(
+            &subscription_to_cancel_immediately.id,
+            &immediate_cancel_params,
+        )
         .await
         .unwrap();
 
-    assert_eq!(immediately_cancelled_subscription.id, subscription_to_cancel_immediately.id);
+    assert_eq!(
+        immediately_cancelled_subscription.id,
+        subscription_to_cancel_immediately.id
+    );
     assert!(immediately_cancelled_subscription.end_date.is_some());
     // The Orb API does not immediately update the status of a cancelled subscription.
     // But the end date is set to now when cancelled immediately.
@@ -691,17 +698,29 @@ async fn test_subscriptions() {
         .await
         .unwrap();
 
-    assert_eq!(date_cancelled_subscription.id, subscription_to_cancel_with_date.id);
+    assert_eq!(
+        date_cancelled_subscription.id,
+        subscription_to_cancel_with_date.id
+    );
     assert!(date_cancelled_subscription.end_date.is_some());
     let end_date = date_cancelled_subscription.end_date.unwrap();
-    assert!(end_date - requested_date < Duration::from_secs(60),
+    assert!(
+        end_date - requested_date < Duration::from_secs(60),
         "End date {:?} should be within 1 minute of requested date {:?}",
-        end_date, requested_date);
-    assert_eq!(date_cancelled_subscription.status, Some(SubscriptionStatus::Active));
+        end_date,
+        requested_date
+    );
+    assert_eq!(
+        date_cancelled_subscription.status,
+        Some(SubscriptionStatus::Active)
+    );
 
     // Test that cancelling an already cancelled subscription returns an error
     let result = client
-        .cancel_subscription(&subscription_to_cancel_immediately.id, &immediate_cancel_params)
+        .cancel_subscription(
+            &subscription_to_cancel_immediately.id,
+            &immediate_cancel_params,
+        )
         .await;
     assert_error_with_status_code(result, StatusCode::BAD_REQUEST);
 }

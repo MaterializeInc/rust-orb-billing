@@ -321,7 +321,9 @@ impl Client {
     ) -> Result<Subscription, Error> {
         let req = self.build_request(
             Method::POST,
-            SUBSCRIPTIONS_PATH.chain_one(subscription_id).chain_one("cancel"),
+            SUBSCRIPTIONS_PATH
+                .chain_one(subscription_id)
+                .chain_one("cancel"),
         );
 
         let req = req.json(&params);
