@@ -47,7 +47,7 @@ use orb_billing::{
     CustomerId, CustomerPaymentProviderRequest, Error, Event, EventPropertyValue,
     EventSearchParams, IngestEventRequest, IngestionMode, InvoiceListParams, LedgerEntry,
     LedgerEntryRequest, ListParams, PaymentProvider, SubscriptionListParams, TaxId, TaxIdRequest,
-    UpdateCustomerRequest, VoidReason,
+    UpdateCustomerRequest, VoidReason, CancelOption, CancelSubscriptionParams, SubscriptionStatus,
 };
 
 /// The API key to authenticate with.
@@ -661,6 +661,49 @@ async fn test_subscriptions() {
         .await
         .unwrap();
     assert_eq!(fetched_subscriptions, &[subscriptions.remove(0)]);
+
+    // Test immediate cancellation
+    let subscription_to_cancel_immediately = subscriptions.pop().unwrap();
+    let immediate_cancel_params = CancelSubscriptionParams {
+        cancel_option: CancelOption::Immediate,
+        cancellation_date: None,
+    };
+    let immediately_cancelled_subscription = client
+        .cancel_subscription(&subscription_to_cancel_immediately.id, &immediate_cancel_params)
+        .await
+        .unwrap();
+
+    assert_eq!(immediately_cancelled_subscription.id, subscription_to_cancel_immediately.id);
+    assert!(immediately_cancelled_subscription.end_date.is_some());
+    // The Orb API does not immediately update the status of a cancelled subscription.
+    // But the end date is set to now when cancelled immediately.
+    // assert_eq!(immediately_cancelled_subscription.status, Some(SubscriptionStatus::Ended));
+
+    // Test cancellation with a requested date
+    let subscription_to_cancel_with_date = subscriptions.pop().unwrap();
+    let requested_date = OffsetDateTime::now_utc() + Duration::from_secs(60 * 60 * 24 * 7);
+    let date_cancel_params = CancelSubscriptionParams {
+        cancel_option: CancelOption::RequestedDate,
+        cancellation_date: Some(requested_date),
+    };
+    let date_cancelled_subscription = client
+        .cancel_subscription(&subscription_to_cancel_with_date.id, &date_cancel_params)
+        .await
+        .unwrap();
+
+    assert_eq!(date_cancelled_subscription.id, subscription_to_cancel_with_date.id);
+    assert!(date_cancelled_subscription.end_date.is_some());
+    let end_date = date_cancelled_subscription.end_date.unwrap();
+    assert!(end_date - requested_date < Duration::from_secs(60),
+        "End date {:?} should be within 1 minute of requested date {:?}",
+        end_date, requested_date);
+    assert_eq!(date_cancelled_subscription.status, Some(SubscriptionStatus::Active));
+
+    // Test that cancelling an already cancelled subscription returns an error
+    let result = client
+        .cancel_subscription(&subscription_to_cancel_immediately.id, &immediate_cancel_params)
+        .await;
+    assert_error_with_status_code(result, StatusCode::BAD_REQUEST);
 }
 
 #[test(tokio::test)]

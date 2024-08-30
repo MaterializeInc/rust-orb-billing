@@ -211,6 +211,30 @@ impl<'a> SubscriptionListParams<'a> {
     }
 }
 
+/// Determines the timing of subscription cancellation
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+#[serde(rename_all = "snake_case")]
+pub enum CancelOption {
+    /// Stops the subscription from auto-renewing at the end of the current term.
+    EndOfSubscriptionTerm,
+    /// Ends the subscription immediately.
+    Immediate,
+    /// Ends the subscription on a specified date.
+    RequestedDate,
+}
+
+/// Parameters for cancelling a subscription.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct CancelSubscriptionParams {
+    /// Determines the timing of subscription cancellation.
+    pub cancel_option: CancelOption,
+    /// The date that the cancellation should take effect.
+    /// This parameter can only be used if the cancel_option is RequestedDate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(with = "time::serde::rfc3339::option")]
+    pub cancellation_date: Option<OffsetDateTime>,
+}
+
 impl Client {
     /// Lists subscriptions as configured by `params`.
     ///
@@ -285,5 +309,23 @@ impl Client {
         Ok(res)
     }
 
-    // TODO: cancel and unschedule subscriptions.
+    /// Cancels an existing subscription.
+    ///
+    /// This endpoint can be used to cancel an existing subscription. It returns the serialized
+    /// subscription object with an end_date parameter that signifies when the subscription will
+    /// transition to an ended state.
+    pub async fn cancel_subscription(
+        &self,
+        subscription_id: &str,
+        params: &CancelSubscriptionParams,
+    ) -> Result<Subscription, Error> {
+        let req = self.build_request(
+            Method::POST,
+            SUBSCRIPTIONS_PATH.chain_one(subscription_id).chain_one("cancel"),
+        );
+
+        let req = req.json(&params);
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
 }
