@@ -63,7 +63,8 @@ pub use client::invoices::{
 pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::{Plan, PlanId};
 pub use client::subscriptions::{
-    CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus,
+    CancelOption, CancelSubscriptionParams, CreateSubscriptionRequest, Subscription,
+    SubscriptionListParams, SubscriptionStatus,
 };
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;

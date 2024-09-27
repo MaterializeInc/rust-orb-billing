@@ -9,6 +9,8 @@ Versioning].
 
 ## [Unreleased] <!-- #release:date -->
 
+* Add support for cancelling subscriptions.
+
 ## [0.11.0] - 2024-03-29
 
 * Add `portal_url` to `Customer`.
