@@ -44,14 +44,15 @@ mod util;
 
 pub use client::customers::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
-    AddressRequest, CostViewMode, CreateCustomerRequest, CreditLedgerInvoiceSettingsRequestParams,
-    Customer, CustomerCostBucket, CustomerCostItem, CustomerCostParams, CustomerCostPriceBlock,
+    AddressRequest, CostViewMode, CreateCustomerRequest, CreateTopUpRequest, CreditBlockStatus,
+    CreditLedgerInvoiceSettingsRequestParams, Customer, CustomerCostBucket, CustomerCostItem,
+    CustomerCostParams, CustomerCostParamsFilter, CustomerCostPriceBlock,
     CustomerCostPriceBlockMatrixPrice, CustomerCostPriceBlockMatrixPriceConfig,
     CustomerCostPriceBlockMatrixPriceValue, CustomerCostPriceBlockPrice,
     CustomerCostPriceBlockPriceGroup, CustomerCostPriceBlockUnitPrice,
     CustomerCostPriceBlockUnitPriceConfig, CustomerCreditBlock, CustomerId,
-    CustomerPaymentProviderRequest, LedgerEntry, LedgerEntryRequest, PaymentProvider,
-    UpdateCustomerRequest, VoidReason,
+    CustomerPaymentProviderRequest, LedgerEntry, LedgerEntryRequest, ListTopUpsResponse,
+    PaymentProvider, TopUp, UpdateCustomerRequest, VoidReason,
 };
 pub use client::events::{
     AmendEventRequest, Event, EventPropertyValue, EventSearchParams, IngestEventDebugResponse,
@@ -59,11 +60,13 @@ pub use client::events::{
 };
 pub use client::invoices::{
     Invoice, InvoiceCustomer, InvoiceListParams, InvoiceStatusFilter, InvoiceSubscription,
+    MarkInvoiceAsPaidBody,
 };
 pub use client::marketplaces::ExternalMarketplace;
 pub use client::plans::{Plan, PlanId};
 pub use client::subscriptions::{
-    CreateSubscriptionRequest, Subscription, SubscriptionListParams, SubscriptionStatus,
+    CreateSubscriptionRequest, SchedulePlanChangeRequestBody, Subscription, SubscriptionListParams,
+    SubscriptionPlanChangeOption, SubscriptionStatus,
 };
 pub use client::taxes::{TaxId, TaxIdRequest, TaxIdType};
 pub use client::Client;
