@@ -17,8 +17,10 @@ use std::time::Duration;
 
 use once_cell::sync::Lazy;
 use reqwest::Url;
+use reqwest_retry::policies::ExponentialBackoff;
+use reqwest_retry::RetryTransientMiddleware;
 
-use crate::Client;
+use crate::client::Client;
 
 pub static DEFAULT_ENDPOINT: Lazy<Url> = Lazy::new(|| {
     "https://api.billwithorb.com/v1"
@@ -35,27 +37,52 @@ pub struct ClientConfig {
 /// A builder for a [`Client`].
 pub struct ClientBuilder {
     endpoint: Url,
+    retry_policy: Option<ExponentialBackoff>,
 }
 
 impl Default for ClientBuilder {
     fn default() -> ClientBuilder {
         ClientBuilder {
             endpoint: DEFAULT_ENDPOINT.clone(),
+            retry_policy: Some(
+                ExponentialBackoff::builder()
+                    .retry_bounds(Duration::from_secs(1), Duration::from_secs(5))
+                    .build_with_max_retries(5),
+            ),
         }
     }
 }
 
 impl ClientBuilder {
+    /// Sets the policy for retrying failed API calls.
+    ///
+    /// Note that the created [`Client`] will retry all API calls that return a 429 status code.
+    pub fn with_retry_policy(mut self, policy: ExponentialBackoff) -> Self {
+        self.retry_policy = Some(policy);
+        self
+    }
+
+    /// Sets the endpoint.
+    pub fn with_endpoint(mut self, endpoint: Url) -> Self {
+        self.endpoint = endpoint;
+        self
+    }
+
     /// Creates a [`Client`] that incorporates the optional parameters
     /// configured on the builder and the specified required parameters.
     pub fn build(self, config: ClientConfig) -> Client {
-        let inner = reqwest::ClientBuilder::new()
+        let client = reqwest::ClientBuilder::new()
             .redirect(reqwest::redirect::Policy::none())
             .timeout(Duration::from_secs(60))
             .build()
             .unwrap();
         Client {
-            inner,
+            inner: match self.retry_policy {
+                Some(policy) => reqwest_middleware::ClientBuilder::new(client.clone())
+                    .with(RetryTransientMiddleware::new_with_policy(policy))
+                    .build(),
+                None => reqwest_middleware::ClientBuilder::new(client.clone()).build(),
+            },
             api_key: config.api_key,
             endpoint: self.endpoint,
         }

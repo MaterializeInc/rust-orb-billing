@@ -36,9 +36,11 @@ use futures::stream::TryStreamExt;
 use once_cell::sync::Lazy;
 use rand::Rng;
 use reqwest::StatusCode;
+use reqwest_retry::policies::ExponentialBackoff;
 use test_log::test;
 use tokio::time::{self, Duration};
 use tracing::info;
+use wiremock::{matchers, Mock, MockServer, ResponseTemplate};
 
 use orb_billing::{
     AddIncrementCreditLedgerEntryRequestParams, AddVoidCreditLedgerEntryRequestParams, Address,
@@ -768,4 +770,46 @@ async fn test_errors() {
 
     let res = client.get_customer_by_external_id("$NOEXIST$").await;
     assert_error_with_status_code(res, StatusCode::NOT_FOUND);
+}
+
+// Tests that 429 responses are retried automatically by the client for API calls
+#[test(tokio::test)]
+async fn test_retry_429() {
+    // Start a mock orb API server and a client configured to target that
+    // server. The retry policy disables backoff to speed up the tests.
+    const MAX_RETRIES: u32 = 3;
+    let server = MockServer::start().await;
+    let client = Client::builder()
+        .with_endpoint(server.uri().parse().unwrap())
+        .with_retry_policy(
+            ExponentialBackoff::builder()
+                .retry_bounds(Duration::from_millis(1), Duration::from_millis(1))
+                .build_with_max_retries(MAX_RETRIES),
+        )
+        .build(ClientConfig { api_key: "".into() });
+
+    // register a mock for the /customers endpoint that returns a 429 response
+    // code. Ensure the client repeatedly retries the API call until giving
+    // up after `MAX_RETRIES` attempts and returning the error.
+    let mock = Mock::given(matchers::method("POST"))
+        .and(matchers::path("/customers"))
+        .respond_with(ResponseTemplate::new(429))
+        .expect(u64::from(MAX_RETRIES) + 1)
+        .named("put customers");
+    server.register(mock).await;
+    let customer_idx = 0;
+    let res = client
+        .create_customer(&CreateCustomerRequest {
+            name: &format!("{TEST_PREFIX}-{customer_idx}"),
+            email: &format!("orb-testing-{customer_idx}@materialize.com"),
+            external_id: None,
+            payment_provider: Some(CustomerPaymentProviderRequest {
+                kind: PaymentProvider::Stripe,
+                id: &format!("cus_fake_{customer_idx}"),
+            }),
+            ..Default::default()
+        })
+        .await;
+
+    assert!(res.is_err());
 }
