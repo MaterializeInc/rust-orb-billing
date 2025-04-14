@@ -31,6 +31,7 @@ use crate::serde::Empty;
 use crate::util::StrIteratorExt;
 
 const CUSTOMERS_PATH: [&str; 1] = ["customers"];
+const ALERTS_PATH: [&str; 1] = ["alerts"];
 
 #[derive(Deserialize)]
 struct ArrayResponse<T> {
@@ -265,7 +266,7 @@ pub enum LedgerEntryRequest<'a> {
 }
 
 /// Optional invoicing settings for a credit purchase.
-#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CreditLedgerInvoiceSettingsRequestParams<'a> {
     /// Whether the credits purchase invoice should auto collect with the customer's saved payment
     /// method.
@@ -276,6 +277,25 @@ pub struct CreditLedgerInvoiceSettingsRequestParams<'a> {
     /// An optional memo to display on the invoice
     #[serde(skip_serializing_if = "Option::is_none")]
     pub memo: Option<&'a str>,
+    /// Whether the credits should be withheld from the customer account until the invoice is paid.
+    /// This applies primarily to stripe invoicing.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub require_successful_payment: Option<bool>,
+}
+
+/// Optional invoicing settings for a credit purchase.
+/// Unlike CreditLedgerInvoiceSettingsRequestParams, this struct is owned.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct CreditLedgerInvoiceSettings {
+    /// Whether the credits purchase invoice should auto collect with the customer's saved payment
+    /// method.
+    pub auto_collection: bool,
+    /// The difference between the invoice date and the issue date for the invoice. If due on issue,
+    /// set this to `0`.
+    pub net_terms: u64,
+    /// An optional memo to display on the invoice
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub memo: Option<String>,
     /// Whether the credits should be withheld from the customer account until the invoice is paid.
     /// This applies primarily to stripe invoicing.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -341,6 +361,21 @@ pub struct CustomerCreditBlock {
     pub expiry_date: Option<OffsetDateTime>,
     /// The price per credit.
     pub per_unit_cost_basis: Option<String>,
+    /// The status of the credit block. Credit blocks are initialized into `pending_payment`
+    /// when require_successful_payment is set in [`CreditLedgerInvoiceSettings`].
+    pub status: CreditBlockStatus,
+}
+
+/// The status of the credit block. Credit blocks are initialized into `pending_payment`
+/// when require_successful_payment is set in [`CreditLedgerInvoiceSettings`].
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub enum CreditBlockStatus {
+    /// A credit block that should count to the total balance.
+    #[serde(rename = "active")]
+    Active,
+    /// A credit block which hasn't been marked as paid.
+    #[serde(rename = "pending_payment")]
+    PendingPayment,
 }
 
 /// The type of ledger entry
@@ -356,7 +391,19 @@ pub enum LedgerEntry {
     /// Voiding of an existing ledger entry has been initiated
     #[serde(rename = "void_initiated")]
     VoidInitiated(VoidInitiatedLedgerEntry),
-    // TODO: additional ledger entry types
+    /// Expiration change
+    #[serde(rename = "expiration_change")]
+    ExpirationChange(BaseLedgerEntry),
+    /// Credit block expiry
+    #[serde(rename = "credit_block_expiry")]
+    CreditBlockExpiry(BaseLedgerEntry),
+    /// Decrement
+    #[serde(rename = "decrement")]
+    DecrementLedgerEntry(BaseLedgerEntry),
+    /// Amendment
+    #[serde(rename = "amendment")]
+    Amendment(BaseLedgerEntry),
+    // TODO: Keep up to date with https://docs.withorb.com/reference/create-ledger-entry
 }
 
 /// The state of a ledger entry
@@ -464,12 +511,111 @@ pub enum CostViewMode {
     Cumulative,
 }
 
+/// The filters applied to the customer costs query.
 #[derive(Debug, Default, Clone)]
-struct CustomerCostParamsFilter<'a> {
-    timeframe_start: Option<&'a OffsetDateTime>,
-    timeframe_end: Option<&'a OffsetDateTime>,
-    view_mode: Option<CostViewMode>,
-    group_by: Option<&'a str>,
+pub struct CustomerCostParamsFilter<'a> {
+    /// The start of the returned range. If not specified this defaults to the billing period start
+    /// date.
+    pub timeframe_start: Option<&'a OffsetDateTime>,
+    /// The start of the returned range. If not specified this defaults to the billing period end
+    /// date.
+    pub timeframe_end: Option<&'a OffsetDateTime>,
+    /// How costs should be broken down in the resultant day-by-day view.
+    pub view_mode: Option<CostViewMode>,
+    /// The custom attribute to group costs by.
+    pub group_by: Option<&'a str>,
+}
+
+/// The filters applied to the customer alerts query.
+#[derive(Debug, Default, Clone)]
+pub struct ListAlertsFilter<'a> {
+    /// Filter on the external_customer_id
+    pub external_customer_id: Option<&'a str>,
+}
+
+/// Configures automatic payments for the customer
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct CreateTopUpRequest<'a> {
+    /// The currency used for this topup.
+    pub currency: CurrencyCode,
+    /// The threshold at which to initiate the topup payment.
+    pub threshold: &'a str,
+    /// The amount that should be purchase.
+    pub amount: &'a str,
+    /// The cost basis of the credits purchase.
+    pub per_unit_cost_basis: &'a str,
+    /// Additional settings for configuring the invoice
+    pub invoice_settings: Option<CreditLedgerInvoiceSettingsRequestParams<'a>>,
+}
+
+/// The response for a user's listing topups.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ListTopUpsResponse {
+    /// The list of topups.
+    pub data: Vec<TopUp>,
+}
+
+/// The different types of Orb alerts
+#[non_exhaustive]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize_enum_str, Serialize_enum_str)]
+pub enum OrbAlertType {
+    /// Usage exceeding a threshold
+    #[serde(rename = "usage_exceeded")]
+    UsageExceeded,
+    /// Cost exceeding a threshold
+    #[serde(rename = "cost_exceeded")]
+    CostExceeded,
+    /// Ran out of credit balance
+    #[serde(rename = "credit_balance_depleted")]
+    CreditBalanceDepleted,
+    /// Regained credit balance
+    #[serde(rename = "credit_balance_recovered")]
+    CreditBalanceRecovered,
+    /// Credit balance dropped below threshold
+    #[serde(rename = "credit_balance_dropped")]
+    CreditBalanceDropped,
+    /// Other.
+    #[serde(other)]
+    Other(String),
+}
+
+/// Orb Alerts are the trigger configuration for Orb webhooks.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Alert {
+    /// The ID of the alert
+    pub id: String,
+    /// The type of the alert
+    #[serde(rename = "type")]
+    pub kind: OrbAlertType,
+    /// The time at which the alert was created.
+    #[serde(with = "time::serde::rfc3339")]
+    pub created_at: OffsetDateTime,
+    /// Whether or not the alert is enabled.
+    pub enabled: bool,
+}
+
+/// The response for a user's listing topups.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ListAlertsResponse {
+    /// The list of topups.
+    pub data: Vec<Alert>,
+}
+
+/// Configures an external payment or invoicing solution for a customer.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct TopUp {
+    /// The Orb-assigned ID of this topup.
+    pub id: String,
+    /// The currency used for this topup.
+    pub currency: CurrencyCode,
+    /// The threshold at which to initiate the topup payment.
+    pub threshold: String,
+    /// The amount that should be purchase.
+    pub amount: String,
+    /// The cost basis of the credits purchase.
+    pub per_unit_cost_basis: String,
+    /// Additional settings for configuring the invoice
+    pub invoice_settings: Option<CreditLedgerInvoiceSettings>,
 }
 
 trait Filterable<T> {
@@ -477,6 +623,14 @@ trait Filterable<T> {
     fn apply(self, filter: &T) -> Self;
 }
 
+impl Filterable<ListAlertsFilter<'_>> for RequestBuilder {
+    fn apply(mut self, filter: &ListAlertsFilter<'_>) -> Self {
+        if let Some(external_customer_id) = &filter.external_customer_id {
+            self = self.query(&[("external_customer_id", external_customer_id.to_string())]);
+        }
+        self
+    }
+}
 impl Filterable<CustomerCostParamsFilter<'_>> for RequestBuilder {
     /// Apply the filter to a request.
     fn apply(mut self, filter: &CustomerCostParamsFilter) -> Self {
@@ -513,7 +667,8 @@ impl Filterable<CustomerCostParamsFilter<'_>> for RequestBuilder {
 /// Parameters for a Customer Costs query.
 #[derive(Debug, Default, Clone)]
 pub struct CustomerCostParams<'a> {
-    filter: CustomerCostParamsFilter<'a>,
+    /// The filters applied to the customer costs query.
+    pub filter: CustomerCostParamsFilter<'a>,
 }
 
 impl<'a> CustomerCostParams<'a> {
@@ -820,6 +975,24 @@ impl Client {
         self.send_request(req).await
     }
 
+    /// Create a new ledger entry for the specified customer's balance by external ID
+    pub async fn create_ledger_entry_by_external_id(
+        &self,
+        external_id: &str,
+        entry: &LedgerEntryRequest<'_>,
+    ) -> Result<LedgerEntry, Error> {
+        let req = self.build_request(
+            Method::POST,
+            CUSTOMERS_PATH
+                .chain_one("external_customer_id")
+                .chain_one(external_id)
+                .chain_one("credits")
+                .chain_one("ledger_entry"),
+        );
+        let req = req.json(entry);
+        self.send_request(req).await
+    }
+
     /// Fetch a day-by-day snapshot of a customer's costs.
     pub async fn get_customer_costs(
         &self,
@@ -848,5 +1021,121 @@ impl Client {
         let req = req.apply(&params.filter);
         let res: ArrayResponse<CustomerCostBucket> = self.send_request(req).await?;
         Ok(res.data)
+    }
+
+    /// List top-ups for a customer. There is a maximum of one topup per currency, so in most
+    /// cases, pagination is not important.
+    pub async fn get_customer_topup(&self, id: &str) -> Result<ListTopUpsResponse, Error> {
+        let req = self.build_request(
+            Method::GET,
+            CUSTOMERS_PATH
+                .chain_one(id)
+                .chain_one("credits")
+                .chain_one("top_ups"),
+        );
+        let res: ListTopUpsResponse = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// List top-ups for a customer by external id. There is a maximum of one topup per currency.
+    pub async fn get_customer_topup_by_external_id(
+        &self,
+        external_id: &str,
+    ) -> Result<ListTopUpsResponse, Error> {
+        let req = self.build_request(
+            Method::GET,
+            CUSTOMERS_PATH
+                .chain_one("external_customer_id")
+                .chain_one(external_id)
+                .chain_one("credits")
+                .chain_one("top_ups"),
+        );
+        let res: ListTopUpsResponse = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// List alerts. Optional filter on customer ID.
+    pub async fn list_alerts<'a>(
+        &self,
+        params: ListAlertsFilter<'a>,
+    ) -> Result<ListAlertsResponse, Error> {
+        let req = self.build_request(Method::GET, ALERTS_PATH);
+        let req = req.apply(&params);
+        let res: ListAlertsResponse = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Create top-up for a customer. There is a maximum of one topup per currency.
+    pub async fn create_customer_topup<'a>(
+        &self,
+        id: &str,
+        body: CreateTopUpRequest<'a>,
+    ) -> Result<TopUp, Error> {
+        let req = self.build_request(
+            Method::POST,
+            CUSTOMERS_PATH
+                .chain_one(id)
+                .chain_one("credits")
+                .chain_one("top_ups"),
+        );
+        let req: RequestBuilder = req.json(&body);
+        let res: TopUp = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Create top-up for a customer by external id. There is a maximum of one topup per currency.
+    pub async fn create_customer_topup_by_external_id<'a>(
+        &self,
+        external_id: &str,
+        body: CreateTopUpRequest<'a>,
+    ) -> Result<TopUp, Error> {
+        let req = self.build_request(
+            Method::POST,
+            CUSTOMERS_PATH
+                .chain_one("external_customer_id")
+                .chain_one(external_id)
+                .chain_one("credits")
+                .chain_one("top_ups"),
+        );
+        let req: RequestBuilder = req.json(&body);
+        let res: TopUp = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Create top-up for a customer. There is a maximum of one topup per currency.
+    pub async fn delete_customer_topup<'a>(
+        &self,
+        user_id: &str,
+        top_up_id: &str,
+    ) -> Result<(), Error> {
+        let req = self.build_request(
+            Method::DELETE,
+            CUSTOMERS_PATH
+                .chain_one(user_id)
+                .chain_one("credits")
+                .chain_one("top_ups")
+                .chain_one(top_up_id),
+        );
+        let _: Empty = self.send_request(req).await?;
+        Ok(())
+    }
+
+    /// Create top-up for a customer by external id. There is a maximum of one topup per currency.
+    pub async fn delete_customer_topup_by_external_id<'a>(
+        &self,
+        user_external_id: &str,
+        top_up_id: &str,
+    ) -> Result<(), Error> {
+        let req = self.build_request(
+            Method::DELETE,
+            CUSTOMERS_PATH
+                .chain_one("external_customer_id")
+                .chain_one(user_external_id)
+                .chain_one("credits")
+                .chain_one("top_ups")
+                .chain_one(top_up_id),
+        );
+        let _: Empty = self.send_request(req).await?;
+        Ok(())
     }
 }

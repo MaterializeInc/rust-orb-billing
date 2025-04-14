@@ -18,7 +18,7 @@ use std::collections::BTreeMap;
 use futures_core::Stream;
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
-use time::OffsetDateTime;
+use time::{Date, OffsetDateTime};
 
 use crate::client::customers::CustomerId;
 use crate::client::Client;
@@ -38,8 +38,9 @@ pub struct Invoice {
     /// The subscription associated with this invoice.
     pub subscription: Option<InvoiceSubscription>,
     /// The issue date of the invoice.
-    #[serde(with = "time::serde::rfc3339")]
-    pub invoice_date: OffsetDateTime,
+    #[serde(with = "time::serde::rfc3339::option")]
+    #[serde(default)]
+    pub invoice_date: Option<OffsetDateTime>,
     /// An automatically generated number to help track and reconcile invoices.
     pub invoice_number: String,
     /// The link to download the PDF representation of the invoice.
@@ -66,7 +67,17 @@ pub struct Invoice {
     /// values.
     #[serde(default)]
     pub metadata: BTreeMap<String, String>,
+    /// The breakdown of prices in this invoice
+    pub line_items: Vec<InvoiceLineItem>,
     // TODO: many missing fields.
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Deserialize, Serialize)]
+pub struct InvoiceLineItem {
+    /// The name of the price associated with this line item.
+    pub name: String,
+    /// The line amount before any line item-specific discounts or minimums.
+    pub subtotal: String,
 }
 
 /// Identifies the customer associated with an [`Invoice`].
@@ -120,6 +131,21 @@ impl InvoiceStatusFilter {
         draft: false,
         void: false,
     };
+}
+
+/// https://docs.withorb.com/reference/mark-invoice-as-paid
+/// This endpoint allows an invoice's status to be set the paid status.
+/// This can only be done to invoices that are in the issued status.
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct MarkInvoiceAsPaidBody<'a> {
+    /// A date string to specify the date of the payment.
+    pub payment_received_date: Date,
+
+    /// An optional external ID to associate with the payment.
+    pub external_id: Option<&'a str>,
+
+    /// An optional note to associate with the payment.
+    pub notes: Option<&'a str>,
 }
 
 /// Parameters for a subscription list operation.
@@ -219,10 +245,42 @@ impl Client {
     /// Gets an invoice by ID.
     pub async fn get_invoice(&self, id: &str) -> Result<Invoice, Error> {
         let req = self.build_request(Method::GET, INVOICES.chain_one(id));
+        let res: Invoice = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Fetches the upcoming invoice for the current billing period given a subscription.
+    pub async fn get_upcoming_invoice(&self, subscription_id: &str) -> Result<Invoice, Error> {
+        let req = self
+            .build_request(Method::GET, INVOICES.chain_one("upcoming"))
+            .query(&[("subscription_id", subscription_id)]);
+        let res: Invoice = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Mark an invoice as paid. For example, this can be done in response to
+    /// Stripe's invoice paid webhook.
+    pub async fn mark_invoice_as_paid<'a>(
+        &self,
+        id: &str,
+        body: MarkInvoiceAsPaidBody<'a>,
+    ) -> Result<Invoice, Error> {
+        let req = self.build_request(Method::POST, INVOICES.chain_one(id).chain_one("mark_paid"));
+        let req = req.json(&body);
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// This endpoint allows an invoice's status to be set the void status.
+    /// This can only be done to invoices that are in the issued status.
+    /// If the associated invoice has used the customer balance to change the amount due, the
+    /// customer balance operation will be reverted. For example, if the invoice used 10 of
+    /// $customer balance, that amount will be added back to the customer balance upon voiding.
+    pub async fn void_invoice<'a>(&self, id: &str) -> Result<Invoice, Error> {
+        let req = self.build_request(Method::POST, INVOICES.chain_one(id).chain_one("void"));
         let res = self.send_request(req).await?;
         Ok(res)
     }
 
     // TODO: get upcoming invoice.
-    // TODO: void invoice.
 }
