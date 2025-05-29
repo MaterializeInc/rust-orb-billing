@@ -84,6 +84,31 @@ pub struct CreateSubscriptionRequest<'a> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub struct SchedulePlanChangeRequest<'a> {
+    /// When the plan change should happen.
+    pub change_option: ChangeOption,
+    /// The plan that the subscription should be changed to.
+    ///
+    /// The plan determines the pricing and the cadence of the subscription.
+    #[serde(flatten)]
+    pub plan_id: PlanId<'a>,
+    /// An idempotency key can ensure that if the same request comes in
+    /// multiple times in a 48-hour period, only one makes changes.
+    // NOTE: this is passed in a request header, not the body
+    #[serde(skip_serializing)]
+    pub idempotency_key: Option<&'a str>,
+    // missing many, many options here
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChangeOption {
+    RequestedDate,
+    EndOfSubscriptionTerm,
+    Immediate,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub struct SubscriptionExternalMarketplaceRequest<'a> {
     /// The kind of the external marketplace.
     #[serde(rename = "external_marketplace")]
@@ -281,6 +306,23 @@ impl Client {
     /// Gets a subscription by ID.
     pub async fn get_subscription(&self, id: &str) -> Result<Subscription, Error> {
         let req = self.build_request(Method::GET, SUBSCRIPTIONS_PATH.chain_one(id));
+        let res = self.send_request(req).await?;
+        Ok(res)
+    }
+
+    /// Schedules a change to the plan for a subscription.
+    pub async fn schedule_plan_change(
+        &self,
+        id: &str,
+        schedule_plan_change: &SchedulePlanChangeRequest<'_>,
+    ) -> Result<Subscription, Error> {
+        let mut req =
+            self.build_request(Method::POST, &["subscriptions", id, "schedule_plan_change"]);
+        if let Some(key) = schedule_plan_change.idempotency_key {
+            req = req.header("Idempotency-Key", key);
+        }
+
+        let req = req.json(schedule_plan_change);
         let res = self.send_request(req).await?;
         Ok(res)
     }
